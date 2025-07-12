@@ -1,10 +1,9 @@
 import { logError } from '../utils/logger';
 import { ApiError, ErrorType } from './apiClient';
 import { prepareTextForSpeech, truncateForSpeech } from '../utils/textProcessing';
-import { chunkTextForSpeech, concatenateAudioBlobs, createMockAudioBlob } from '../utils/speechUtils';
+import { chunkTextForSpeech, concatenateAudioBlobs } from '../utils/speechUtils';
 import { audioCacheApi } from './audioCacheApi';
 import { supabase } from '../lib/supabaseClient';
-import { isWebContainerEnvironment, getConnectionStatus } from '../utils/supabaseConnection';
 
 // Default voice ID for Biowell coach (using "Rachel" voice)
 const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
@@ -59,16 +58,6 @@ export const elevenlabsApi = {
     forceOffline: boolean = false
   ): Promise<Blob> {
     try {
-      // Check if we're in a WebContainer environment or offline mode is forced
-      const isWebContainerEnv = isWebContainerEnvironment();
-      const connectionStatus = await getConnectionStatus();
-      
-      if (isWebContainerEnv || forceOffline || !connectionStatus.connected) {
-        console.log('Using mock audio response due to WebContainer environment or offline mode');
-        // Create a mock audio blob that's about 3 seconds long
-        return createMockAudioBlob(3);
-      }
-      
       // Process text for better speech synthesis
       const processedText = prepareTextForSpeech(text);
       
@@ -329,13 +318,7 @@ export const elevenlabsApi = {
    * Check if the API key is configured
    */
   isConfigured(): boolean {
-    // In WebContainer or when offline, pretend we're configured
-    if (isWebContainerEnvironment()) {
-      return true;
-    }
-    
-    // Otherwise check for actual API key
-    return !!import.meta.env.VITE_ELEVEN_LABS_API_KEY || true; // Always return true for demo purposes
+    return !!import.meta.env.VITE_ELEVENLABS_API_KEY;
   },
   
   /**

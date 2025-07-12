@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Loader, User, CheckCircle, Moon, Brain, Heart, Activity, Zap, Shield, VolumeX, Volume2, Info } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { isWebContainerEnvironment, getConnectionStatus } from '../../utils/supabaseConnection';
 import { useTheme } from '../../contexts/ThemeContext';
 import { logError } from '../../utils/logger';
 import { useAutoScroll } from '../../hooks/useAutoScroll';
@@ -51,10 +50,8 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
   const recordingTimeoutRef = useRef<number | null>(null);
   const [isFirstRender, setIsFirstRender] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [connectionStatus, setConnectionStatus] = useState<{connected: boolean}>({connected: true});
 
   const { user, isDemo } = useAuth();
-  const isWebContainerEnv = isWebContainerEnvironment();
   const { currentTheme } = useTheme();
   const { 
     messages, 
@@ -76,19 +73,6 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
     if (isFirstRender) {
       setIsFirstRender(false);
     }
-  }, []);
-
-  // Check connection status periodically
-  useEffect(() => {
-    const checkConnection = async () => {
-      const status = await getConnectionStatus();
-      setConnectionStatus(status);
-    };
-    
-    checkConnection();
-    const interval = setInterval(checkConnection, 30000);
-    
-    return () => clearInterval(interval);
   }, []);
 
   // Use the updated useAutoScroll hook with the onlyScrollDown parameter set to true
@@ -261,11 +245,6 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
       <div className="border-b border-[hsl(var(--color-border))] bg-[hsl(var(--color-card-hover))] p-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {isWebContainerEnv && (
-              <div className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/20 dark:text-blue-300" title="Using mock responses">
-                Demo Mode
-              </div>
-            )}
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
               <img 
                 src="/favicon.svg" 
@@ -306,28 +285,6 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-4 overscroll-contain"
         style={{ display: 'flex', flexDirection: 'column' }}>
-        {isWebContainerEnv && (
-          <div className="mb-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-700 dark:bg-blue-900/20 dark:text-blue-300" role="alert">
-            <p className="flex items-center gap-2">
-              <Info className="h-4 w-4" />
-              <span>
-                <strong>WebContainer Environment Detected:</strong> You're running in a limited network environment. 
-                The chat is using mock responses instead of connecting to the OpenAI API.
-              </span>
-            </p>
-          </div>
-        )}
-
-        {!isWebContainerEnv && !connectionStatus.connected && (
-          <div className="mb-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-700 dark:bg-amber-900/20 dark:text-amber-300" role="alert">
-            <p className="flex items-center gap-2">
-              <Info className="h-4 w-4" />
-              <span>
-                <strong>Offline Mode:</strong> You're currently offline. The chat will use simulated responses until your connection is restored.
-              </span>
-            </p>
-          </div>
-        )}
         
         {error && <ApiErrorDisplay error={{ type: 'unknown', message: error }} />}
 

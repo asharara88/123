@@ -3,7 +3,6 @@ import { ApiError, ErrorType } from './apiClient';
 import { logError } from '../utils/logger';
 import { supabase } from '../lib/supabaseClient';
 import { openaiRateLimiter, createUserRateLimiter } from '../utils/rateLimiter';
-import { isWebContainerEnvironment, getConnectionStatus } from '../utils/supabaseConnection';
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -21,57 +20,6 @@ interface ChatCompletionOptions {
 export const openaiApi = {
   async createChatCompletion(messages: ChatMessage[], options: ChatCompletionOptions = {}) {
     try {
-      // Check if we're in a WebContainer environment
-      const isWebContainerEnv = isWebContainerEnvironment();
-      
-      // If in WebContainer or offline, use a mock response instead of trying to call the Edge Function
-      if (isWebContainerEnv) {
-        console.log('WebContainer environment detected - using mock OpenAI response');
-        
-        // Create a mock response based on the last user message
-        const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-        const userContent = lastUserMessage?.content || '';
-        
-        // Generate a contextual mock response
-        let mockResponse = "I'm your Biowell health coach. How can I help you today?";
-        
-        if (userContent.toLowerCase().includes('sleep')) {
-          mockResponse = "Based on your interest in sleep improvement, I recommend Magnesium Glycinate (green-tier) at 300-400mg before bed to support deeper sleep and muscle relaxation. L-Theanine (green-tier) at 200mg can also help with sleep onset without causing grogginess. For best results, maintain a consistent sleep schedule and avoid screens 1 hour before bedtime.";
-        } else if (userContent.toLowerCase().includes('energy')) {
-          mockResponse = "To boost your energy levels naturally, I recommend B-Complex vitamins (green-tier) in the morning to support cellular energy production. Rhodiola Rosea (yellow-tier) at 200-400mg daily can help combat fatigue and improve mental performance under stress. Also consider optimizing your sleep quality and staying properly hydrated throughout the day.";
-        } else if (userContent.toLowerCase().includes('stress') || userContent.toLowerCase().includes('anxiety')) {
-          mockResponse = "For stress management, Ashwagandha (green-tier) at 300-600mg daily has strong evidence for reducing cortisol levels. L-Theanine (green-tier) at 200mg can promote relaxation without sedation. Combining these supplements with regular meditation, deep breathing exercises, and adequate sleep will provide the best results for stress reduction.";
-        } else if (userContent.toLowerCase().includes('muscle') || userContent.toLowerCase().includes('workout')) {
-          mockResponse = "For muscle building and recovery, Creatine Monohydrate (green-tier) at 5g daily is one of the most well-researched supplements. Whey Protein Isolate (green-tier) at 20-30g post-workout provides essential amino acids for muscle repair. For optimal results, ensure you're in a slight caloric surplus and following a progressive resistance training program.";
-        }
-        
-        // Return a mock response object that matches the OpenAI API response structure
-        return {
-          choices: [
-            {
-              message: {
-                content: mockResponse
-              }
-            }
-          ]
-        };
-      }
-      
-      // Check connection status
-      const connectionStatus = await getConnectionStatus();
-      if (!connectionStatus.connected) {
-        console.log('Network connection unavailable - using mock OpenAI response');
-        return {
-          choices: [
-            {
-              message: {
-                content: "I'm your Biowell health coach. I'm currently operating in offline mode due to network connectivity issues. I can still provide general guidance, but my responses will be limited."
-              }
-            }
-          ]
-        };
-      }
-      
       // Get the current session for authentication
       const { data: { session } } = await supabase.auth.getSession(); 
       
@@ -121,6 +69,7 @@ export const openaiApi = {
         // Log the request in development mode only
         if (import.meta.env.DEV) {
           console.log('Making request to Edge Function:', `${supabaseUrl}/functions/v1/openai-proxy`);
+          console.log('Request body:', { messages, context: options.context, options });
         }
         
         response = await fetch(
@@ -144,25 +93,7 @@ export const openaiApi = {
       } catch (networkError) {
         console.error('Network request failed:', networkError);
         logError('Network request failed', networkError);
-        
-        // Provide more specific error messages based on the error type
-        let errorMessage = 'Unable to reach AI service.';
-
-        if (networkError instanceof TypeError && networkError.message.includes('Failed to fetch')) { 
-          if (isWebContainerEnvironment()) {
-            errorMessage = 'Network request failed in WebContainer environment. The app will use mock responses instead.';
-          } else {
-            errorMessage = 'Connection failed. This usually means the Supabase Edge Function is not deployed. Please deploy the openai-proxy function to your Supabase project.';
-          }
-          
-          // Add more specific CORS error detection
-          if (networkError.message.includes('CORS') || 
-              (typeof window !== 'undefined' && window.console && 
-               window.console.error && 
-               window.console.error.toString().includes('CORS'))) {
-            errorMessage = 'CORS error detected. The Supabase Edge Function needs to be updated with proper CORS headers.';
-          }
-        }
+        let errorMessage = 'Connection failed. This usually means the Supabase Edge Function is not deployed. Please deploy the openai-proxy function to your Supabase project.';
         
         throw {
           type: ErrorType.NETWORK,
@@ -240,36 +171,6 @@ export const openaiApi = {
   
   async generateResponse(prompt: string, context?: Record<string, any>): Promise<string> {
     try {
-      // Check if we're in a WebContainer environment
-      const isWebContainerEnv = isWebContainerEnvironment();
-      
-      // If in WebContainer or offline, provide a direct mock response
-      if (isWebContainerEnv) {
-        console.log('WebContainer environment detected - using direct mock response');
-        
-        // Generate a contextual mock response based on the prompt
-        let mockResponse = "I'm your Biowell health coach. How can I help you today?";
-        
-        if (prompt.toLowerCase().includes('sleep')) {
-          mockResponse = "Based on your interest in sleep improvement, I recommend Magnesium Glycinate (green-tier) at 300-400mg before bed to support deeper sleep and muscle relaxation. L-Theanine (green-tier) at 200mg can also help with sleep onset without causing grogginess. For best results, maintain a consistent sleep schedule and avoid screens 1 hour before bedtime.";
-        } else if (prompt.toLowerCase().includes('energy')) {
-          mockResponse = "To boost your energy levels naturally, I recommend B-Complex vitamins (green-tier) in the morning to support cellular energy production. Rhodiola Rosea (yellow-tier) at 200-400mg daily can help combat fatigue and improve mental performance under stress. Also consider optimizing your sleep quality and staying properly hydrated throughout the day.";
-        } else if (prompt.toLowerCase().includes('stress') || prompt.toLowerCase().includes('anxiety')) {
-          mockResponse = "For stress management, Ashwagandha (green-tier) at 300-600mg daily has strong evidence for reducing cortisol levels. L-Theanine (green-tier) at 200mg can promote relaxation without sedation. Combining these supplements with regular meditation, deep breathing exercises, and adequate sleep will provide the best results for stress reduction.";
-        } else if (prompt.toLowerCase().includes('muscle') || prompt.toLowerCase().includes('workout')) {
-          mockResponse = "For muscle building and recovery, Creatine Monohydrate (green-tier) at 5g daily is one of the most well-researched supplements. Whey Protein Isolate (green-tier) at 20-30g post-workout provides essential amino acids for muscle repair. For optimal results, ensure you're in a slight caloric surplus and following a progressive resistance training program.";
-        }
-        
-        return mockResponse;
-      }
-      
-      // Check connection status
-      const connectionStatus = await getConnectionStatus();
-      if (!connectionStatus.connected) {
-        console.log('Network connection unavailable - using mock response');
-        return "I'm your Biowell health coach. I'm currently operating in offline mode due to network connectivity issues. I can still provide general guidance, but my responses will be limited.";
-      }
-      
       // Format messages for the API
       const messages: ChatMessage[] = [
         { role: 'user', content: prompt }
@@ -301,14 +202,6 @@ export const openaiApi = {
   
   async processOnboarding(messages: any[]): Promise<string> {
     try {
-      // Check if we're in a WebContainer environment
-      const isWebContainerEnv = isWebContainerEnvironment();
-      
-      // If in WebContainer, provide a mock response
-      if (isWebContainerEnv) {
-        return "What is your name?";
-      }
-      
       // Add system message for onboarding
       const systemMessage = { 
         role: 'system', 
@@ -330,34 +223,6 @@ export const openaiApi = {
   
   async extractOnboardingData(messages: any[]): Promise<any> {
     try {
-      // Check if we're in a WebContainer environment
-      const isWebContainerEnv = isWebContainerEnvironment();
-      
-      // If in WebContainer or offline, provide mock data
-      if (isWebContainerEnv) {
-        return {
-          firstName: "Demo",
-          lastName: "User",
-          gender: "not_specified",
-          mainGoal: "Improve sleep quality",
-          healthGoals: ["Better sleep", "Reduce stress", "Increase energy"],
-          supplementHabits: ["Vitamin D", "Magnesium"]
-        };
-      }
-      
-      // Check connection status
-      const connectionStatus = await getConnectionStatus();
-      if (!connectionStatus.connected) {
-        return {
-          firstName: "Demo",
-          lastName: "User",
-          gender: "not_specified",
-          mainGoal: "Improve sleep quality",
-          healthGoals: ["Better sleep", "Reduce stress", "Increase energy"],
-          supplementHabits: ["Vitamin D", "Magnesium"]
-        };
-      }
-      
       // Create a system prompt for data extraction
       const systemPrompt = {
         role: 'system',
