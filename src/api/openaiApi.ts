@@ -112,29 +112,37 @@ export const openaiApi = {
         }
         
         let errorMessage = 'AI service request failed';
+        let setupRequired = false;
         
         if (errorData.error && errorData.error.message) {
           if (errorData.error.message.includes('API key')) {
             errorMessage = 'AI service is not properly configured. Please ensure the OpenAI API key is set correctly.';
+            setupRequired = true;
           } else if (errorData.error.message.includes('rate limit')) {
             errorMessage = 'Too many requests. Please try again in a moment.';
           } else if (errorData.error.message.includes('quota')) {
             errorMessage = 'Service temporarily unavailable. Please try again later.';
           } else if (errorData.error.message.includes('timeout')) {
             errorMessage = 'Request timed out. Please try again.';
+          } else if (errorData.error.message.includes('not configured')) {
+            errorMessage = errorData.error.message;
+            setupRequired = true;
           } else {
             errorMessage = errorData.error.message;
           }
         } else if (response.status === 404) {
           errorMessage = 'The OpenAI Edge Function is not deployed. Please deploy the openai-proxy function to your Supabase project.';
+          setupRequired = true;
         } else if (response.status === 500) {
           errorMessage = 'Internal server error. Please check your OpenAI API key configuration and Edge Function deployment.';
+          setupRequired = true;
         }
         
         console.error('Edge Function error:', { 
           status: response.status,
           statusText: response.statusText,
-          errorData
+          errorData,
+          setupInstructions: errorData.error?.setupInstructions
         });
         
         logError('Edge Function error', { 
@@ -148,6 +156,7 @@ export const openaiApi = {
           message: errorMessage,
           status: response.status,
           originalError: errorData,
+          setupRequired
         };
 
         // Convert certain status codes to authentication errors
