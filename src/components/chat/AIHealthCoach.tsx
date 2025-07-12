@@ -9,7 +9,6 @@ import { useAutoScroll } from '../../hooks/useAutoScroll';
 import ReactMarkdown from 'react-markdown';
 import { useChatStore } from '../../store';
 import ApiErrorDisplay from '../common/ApiErrorDisplay';
-import { isWebContainerEnvironment } from '../../utils/supabaseConnection';
 import VoicePreferences from './VoicePreferences';
 import ChatSettingsButton from './ChatSettingsButton';
 import AudioVisualizer from './AudioVisualizer';
