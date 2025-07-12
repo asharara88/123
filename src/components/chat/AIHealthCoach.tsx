@@ -54,7 +54,7 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
   const inputRef = useRef<HTMLInputElement>(null);
   
   const { user, isDemo } = useAuth();
-  const isWebContainer = isWebContainerEnvironment(); 
+  const isWebContainerEnv = isWebContainerEnvironment(); 
   const { currentTheme } = useTheme();
   const { 
     messages, 
@@ -248,7 +248,7 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
       <div className="border-b border-[hsl(var(--color-border))] bg-[hsl(var(--color-card-hover))] p-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {isWebContainer && (
+            {isWebContainerEnv && (
               <div className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/20 dark:text-blue-300" title="Using mock responses">
                 Demo Mode
               </div>
@@ -293,7 +293,7 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-4 overscroll-contain"
         style={{ display: 'flex', flexDirection: 'column' }}>
-        {isWebContainer && (
+        {isWebContainerEnv && (
           <div className="mb-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
             <p className="flex items-center gap-2">
               <Info className="h-4 w-4" />
@@ -464,7 +464,7 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask me anything about your health..."
             className="flex-1 rounded-lg border border-[hsl(var(--color-border))] bg-[hsl(var(--color-surface-1))] px-4 py-2 text-text placeholder:text-text-light focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            disabled={loading || isWebContainer && !isDemo}
+           disabled={loading || isWebContainerEnv && !isDemo}
             aria-label="Your message"
           />
           

@@ -87,13 +87,15 @@ export const useChatStore = create<ChatState>()(
           // Save to chat history if userId is provided
           if (userId) {
             try {
+              const isWebContainerEnv = isWebContainerEnvironment();
               // Only try to save if not in WebContainer
-              if (!isWebContainerEnvironment()) {
+              if (!isWebContainerEnv) {
                 await chatApi.saveChatMessage(userId, message, response);
               }
             } catch (error) {
               // Only log error if not in WebContainer
-              if (!isWebContainerEnvironment()) {
+              const isWebContainerEnv = isWebContainerEnvironment();
+              if (!isWebContainerEnv) {
                 logError('Failed to save chat message', error);
               }
               // Continue even if saving fails

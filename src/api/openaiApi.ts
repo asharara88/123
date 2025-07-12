@@ -21,11 +21,11 @@ interface ChatCompletionOptions {
 export const openaiApi = {
   async createChatCompletion(messages: ChatMessage[], options: ChatCompletionOptions = {}) {
     try {
-      // Check if we're in a WebContainer environment (StackBlitz, CodeSandbox, etc.)
-      const isWebContainer = isWebContainerEnvironment();
+      // Check if we're in a WebContainer environment
+      const isWebContainerEnv = isWebContainerEnvironment();
       
       // If in WebContainer, use a mock response instead of trying to call the Edge Function
-      if (isWebContainer) {
+      if (isWebContainerEnv) {
         console.log('WebContainer environment detected - using mock OpenAI response');
         
         // Create a mock response based on the last user message
@@ -225,8 +225,11 @@ export const openaiApi = {
   
   async generateResponse(prompt: string, context?: Record<string, any>): Promise<string> {
     try {
-      // If in WebContainer, provide a direct mock response without going through createChatCompletion
-      if (isWebContainerEnvironment()) {
+      // Check if we're in a WebContainer environment
+      const isWebContainerEnv = isWebContainerEnvironment();
+      
+      // If in WebContainer, provide a direct mock response
+      if (isWebContainerEnv) {
         console.log('WebContainer environment detected - using direct mock response');
         
         // Generate a contextual mock response based on the prompt
@@ -276,8 +279,11 @@ export const openaiApi = {
   
   async processOnboarding(messages: any[]): Promise<string> {
     try {
+      // Check if we're in a WebContainer environment
+      const isWebContainerEnv = isWebContainerEnvironment();
+      
       // If in WebContainer, provide a mock response
-      if (isWebContainerEnvironment()) {
+      if (isWebContainerEnv) {
         return "What is your name?";
       }
       
@@ -302,8 +308,11 @@ export const openaiApi = {
   
   async extractOnboardingData(messages: any[]): Promise<any> {
     try {
+      // Check if we're in a WebContainer environment
+      const isWebContainerEnv = isWebContainerEnvironment();
+      
       // If in WebContainer, provide mock data
-      if (isWebContainerEnvironment()) {
+      if (isWebContainerEnv) {
         return {
           firstName: "Demo",
           lastName: "User",
