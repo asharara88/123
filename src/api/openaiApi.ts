@@ -4,6 +4,27 @@ import { logError } from '../utils/logger';
 import { supabase } from '../lib/supabaseClient';
 import { openaiRateLimiter, createUserRateLimiter } from '../utils/rateLimiter';
 
+// Import OpenAI conditionally to avoid initialization errors
+let OpenAI: any;
+let openai: any;
+
+// Only initialize if API key is available
+const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+if (apiKey) {
+  try {
+    // Dynamic import to avoid initialization errors
+    import('openai').then((module) => {
+      OpenAI = module.default;
+      openai = new OpenAI({
+        apiKey,
+        dangerouslyAllowBrowser: true // Only for development
+      });
+    });
+  } catch (err) {
+    console.error('Failed to initialize OpenAI client:', err);
+  }
+}
+
 // System prompt for direct OpenAI API calls
 const SYSTEM_PROMPT = `You are Biowell AI, a personalized health coach focused on providing evidence-based health advice and supplement recommendations.
 
