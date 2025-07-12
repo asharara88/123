@@ -135,6 +135,11 @@ export function ConnectionStatus({ showDetails = false, className = '' }: Connec
     );
   };
 
+  // Hide the connection status indicator completely when in WebContainer environment
+  if (!showDetails && connectionState.isWebContainer) {
+    return null;
+  }
+
   if (!showDetails) {
     return (
       <div className={`flex items-center space-x-2 ${className} bg-white dark:bg-gray-800 px-2 py-1 rounded-full shadow-sm`}>
@@ -195,4 +200,5 @@ export function ConnectionStatus({ showDetails = false, className = '' }: Connec
     </div>
   );
 }
+
 export default ConnectionStatus;
