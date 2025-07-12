@@ -193,12 +193,4 @@ export function ConnectionStatus({ showDetails = false, className = '' }: Connec
         </div>
         
         <button
-          onClick={checkConnection}
-          disabled={connectionState.checking}
-        />
-      </div>
-    </div>
-  );
-}
-
 export default ConnectionStatus;
