@@ -195,14 +195,9 @@ export function ConnectionStatus({ showDetails = false, className = '' }: Connec
         <button
           onClick={checkConnection}
           disabled={connectionState.checking}
-    connectionState.isWebContainer ? null : (
-      <div className={`flex items-center space-x-2 ${className} bg-white dark:bg-gray-800 px-2 py-1 rounded-full shadow-sm`}>
-        {getStatusIcon()}
-        <span className={`text-xs ${getStatusColor()}`}>
-          {getStatusText()}
-        </span>
+        />
       </div>
-    )
+    </div>
   );
 }
 
