@@ -1,8 +1,7 @@
 // src/api/openaiApi.ts
 import { ApiError, ErrorType } from './apiClient';
 import { logError } from '../utils/logger';
-import { supabase } from '../lib/supabaseClient';
-import { openaiRateLimiter, createUserRateLimiter } from '../utils/rateLimiter';
+import OpenAI from 'openai';
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -17,159 +16,71 @@ interface ChatCompletionOptions {
   response_format?: { type: string };
 }
 
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+  dangerouslyAllowBrowser: true // Only for development
+});
+
+// System prompt to enforce evidence-based recommendations
+const SYSTEM_PROMPT = `You are Biowell AI, a personalized health coach focused on providing evidence-based health advice and supplement recommendations.
+
+Your role is to:
+- Provide personalized health advice based on user data and goals
+- Make evidence-based supplement and lifestyle recommendations
+- Help users understand their health metrics and trends
+- Suggest actionable steps for health optimization
+
+Guidelines:
+- Always base recommendations on scientific research
+- Consider the user's health data, goals, and conditions
+- Be honest about limitations of current research
+- Avoid making diagnostic or strong medical claims
+- Defer to healthcare professionals for medical issues
+- Focus on lifestyle, nutrition, exercise, and well-researched supplements
+- Provide specific, actionable advice when possible
+- Maintain a supportive and encouraging tone
+
+Remember: You're a coach and guide, not a replacement for medical care.`;
+
 export const openaiApi = {
   async createChatCompletion(messages: ChatMessage[], options: ChatCompletionOptions = {}) {
     try {
-      // Get the current session for authentication
-      const { data: { session } } = await supabase.auth.getSession(); 
-      
-      // Rate limiting check
-      const userId = session?.user?.id || 'anonymous';
-      const rateLimitKey = createUserRateLimiter(userId, 'openai');
-      
-      if (!openaiRateLimiter.isAllowed(rateLimitKey)) {
-        throw {
-          type: ErrorType.VALIDATION,
-          message: 'Rate limit exceeded. Please wait before making another request.',
-          status: 429
-        } as ApiError;
-      }
-      
-      // Prepare headers
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      // Add authorization if we have a session
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
-      }
-      
-      // Always include the anon key
-      headers['apikey'] = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      
-      if (!supabaseUrl) {
-        console.error('Environment check:', {
-          hasUrl: !!import.meta.env.VITE_SUPABASE_URL,
-          hasKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
-          url: import.meta.env.VITE_SUPABASE_URL ? 
-            import.meta.env.VITE_SUPABASE_URL.substring(0, 20) + '...' : 'undefined'
-        });
-        throw new Error('Missing Supabase URL configuration. Please check your .env file and restart the development server.');
+      // Check if OpenAI API key is configured
+      if (!import.meta.env.VITE_OPENAI_API_KEY) {
+        throw new Error('OpenAI API key is not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
       }
 
-      if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
-        throw new Error('Missing Supabase anon key configuration. Please check your .env file and restart the development server.');
-      }
-      
-      let response;
       try {
-        // Log the request in development mode only
-        if (import.meta.env.DEV) {
-          console.log('Making request to Edge Function:', `${supabaseUrl}/functions/v1/openai-proxy`);
-          console.log('Request body:', { messages, context: options.context, options });
-        }
-        
-        response = await fetch(
-          `${supabaseUrl}/functions/v1/openai-proxy`,
-          {
-            method: 'POST',
-            headers,
-            credentials: 'omit',
-            body: JSON.stringify({ 
-              messages,
-              context: options.context,
-              options: {
-                temperature: options.temperature,
-                max_tokens: options.max_tokens,
-                model: options.model || 'gpt-4',
-                response_format: options.response_format,
-              },
-            }),
-          }
-        );
+        // Prepare messages with system prompt
+        const formattedMessages = [
+          { role: 'system', content: SYSTEM_PROMPT },
+          // Add context if provided
+          ...(options.context ? [{ role: 'system', content: `Context: ${options.context}` }] : []),
+          ...messages
+        ];
+
+        // Call OpenAI API directly
+        const completion = await openai.chat.completions.create({
+          model: options.model || 'gpt-4',
+          messages: formattedMessages,
+          temperature: options.temperature !== undefined ? options.temperature : 0.7,
+          max_tokens: options.max_tokens || 1000,
+          response_format: options.response_format,
+        });
+
+        return completion;
       } catch (networkError) {
-        console.error('Network request failed:', networkError);
-        logError('Network request failed', networkError);
-        let errorMessage = 'Connection failed. This usually means the Supabase Edge Function is not deployed. Please deploy the openai-proxy function to your Supabase project.';
-        
+        console.error('OpenAI API request failed:', networkError);
+        logError('OpenAI API request failed', networkError);
+        let errorMessage = 'Failed to connect to OpenAI API. Please check your API key and internet connection.';
+
         throw {
           type: ErrorType.NETWORK,
           message: errorMessage,
-          originalError: networkError,
-          setupRequired: true
+          originalError: networkError
         } as ApiError;
       }
-
-      if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch (e) {
-          errorData = { error: { message: `HTTP error! status: ${response.status}` } };
-        }
-        
-        let errorMessage = 'AI service request failed';
-        let setupRequired = false;
-        
-        if (errorData.error && errorData.error.message) {
-          if (errorData.error.message.includes('API key')) {
-            errorMessage = 'AI service is not properly configured. Please ensure the OpenAI API key is set correctly.';
-            setupRequired = true;
-          } else if (errorData.error.message.includes('rate limit')) {
-            errorMessage = 'Too many requests. Please try again in a moment.';
-          } else if (errorData.error.message.includes('quota')) {
-            errorMessage = 'Service temporarily unavailable. Please try again later.';
-          } else if (errorData.error.message.includes('timeout')) {
-            errorMessage = 'Request timed out. Please try again.';
-          } else if (errorData.error.message.includes('not configured')) {
-            errorMessage = errorData.error.message;
-            setupRequired = true;
-          } else {
-            errorMessage = errorData.error.message;
-          }
-        } else if (response.status === 404) {
-          errorMessage = 'The OpenAI Edge Function is not deployed. Please deploy the openai-proxy function to your Supabase project.';
-          setupRequired = true;
-        } else if (response.status === 500) {
-          errorMessage = 'Internal server error. Please check your OpenAI API key configuration and Edge Function deployment.';
-          setupRequired = true;
-        }
-        
-        console.error('Edge Function error:', { 
-          status: response.status,
-          statusText: response.statusText,
-          errorData,
-          setupInstructions: errorData.error?.setupInstructions
-        });
-        
-        logError('Edge Function error', { 
-          status: response.status,
-          statusText: response.statusText,
-          errorData
-        });
-        
-        const apiError: ApiError = {
-          type: ErrorType.SERVER,
-          message: errorMessage,
-          status: response.status,
-          originalError: errorData,
-          setupRequired
-        };
-
-        // Convert certain status codes to authentication errors
-        if (response.status === 401 || response.status === 403) {
-          apiError.type = ErrorType.AUTHENTICATION;
-        }
-
-        throw apiError;
-      }
-
-      const data = await response.json();
-      console.log('OpenAI API request successful');
-      return data;
     } catch (err) {
       if (err instanceof Error || (err && typeof err === 'object' && 'type' in err)) {
         throw err; // Re-throw if already a proper Error object or ApiError
@@ -180,17 +91,17 @@ export const openaiApi = {
   
   async generateResponse(prompt: string, context?: Record<string, any>): Promise<string> {
     try {
-      // Format messages for the API
+      // Format messages
       const messages: ChatMessage[] = [
         { role: 'user', content: prompt }
       ];
       
-      // Call the createChatCompletion method with context in options
+      // Call OpenAI API
       const data = await this.createChatCompletion(messages, { 
         context: context ? JSON.stringify(context) : undefined 
       });
       
-      // Extract and return the response
+      // Extract response
       if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
         throw new Error('Invalid response format from AI service');
       }
@@ -211,7 +122,7 @@ export const openaiApi = {
   
   async processOnboarding(messages: any[]): Promise<string> {
     try {
-      // Add system message for onboarding
+      // System message for onboarding
       const systemMessage = { 
         role: 'system', 
         content: 'You are a friendly onboarding assistant for Biowell. Ask questions one at a time to help the user complete their profile. Be conversational and engaging.' 
@@ -219,10 +130,9 @@ export const openaiApi = {
       
       const formattedMessages = [systemMessage, ...messages];
       
-      // Call the API
+      // Call OpenAI
       const data = await this.createChatCompletion(formattedMessages, { temperature: 0.7 });
       
-      // Return the response
       return data.choices?.[0]?.message?.content || 'What is your name?';
     } catch (err) {
       logError('Error processing onboarding', err);
@@ -232,7 +142,7 @@ export const openaiApi = {
   
   async extractOnboardingData(messages: any[]): Promise<any> {
     try {
-      // Create a system prompt for data extraction
+      // System prompt for data extraction
       const systemPrompt = {
         role: 'system',
         content: `Extract structured data from the conversation. Return a JSON object with the following fields:
@@ -246,7 +156,7 @@ export const openaiApi = {
           Only include fields that you have information for. If a field is not mentioned in the conversation, don't include it.`
       };
       
-      // Call the API with the system prompt and conversation history
+      // Call OpenAI API
       const data = await this.createChatCompletion(
         [systemPrompt, ...messages],
         { 
@@ -255,7 +165,7 @@ export const openaiApi = {
         }
       );
       
-      // Parse the JSON response
+      // Parse JSON response
       const content = data.choices?.[0]?.message?.content || '{}';
       return JSON.parse(content);
     } catch (err) {
