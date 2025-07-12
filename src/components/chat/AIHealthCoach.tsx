@@ -2,13 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Loader, User, CheckCircle, Moon, Brain, Heart, Activity, Zap, Shield, VolumeX, Volume2, Info } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { isWebContainerEnvironment } from '../../utils/supabaseConnection';
 import { useTheme } from '../../contexts/ThemeContext';
 import { logError } from '../../utils/logger';
-import { isWebContainerEnvironment } from '../../utils/supabaseConnection';
 import { useAutoScroll } from '../../hooks/useAutoScroll';
 import ReactMarkdown from 'react-markdown';
 import { useChatStore } from '../../store';
-import ApiErrorDisplay from '../common/ApiErrorDisplay';
 import VoicePreferences from './VoicePreferences';
 import ChatSettingsButton from './ChatSettingsButton';
 import AudioVisualizer from './AudioVisualizer';
@@ -51,9 +50,9 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
   const recordingTimeoutRef = useRef<number | null>(null);
   const [isFirstRender, setIsFirstRender] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
   const { user, isDemo } = useAuth();
-  const isWebContainerEnv = isWebContainerEnvironment(); 
+  const isWebContainerEnv = isWebContainerEnvironment();
   const { currentTheme } = useTheme();
   const { 
     messages, 
