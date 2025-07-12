@@ -4,7 +4,6 @@ import { logError } from '../utils/logger';
 import { supabase } from '../lib/supabaseClient';
 import { openaiRateLimiter, createUserRateLimiter } from '../utils/rateLimiter';
 import { isWebContainerEnvironment } from '../utils/supabaseConnection';
-import { isWebContainerEnvironment } from '../utils/supabaseConnection';
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
