@@ -3,7 +3,7 @@ import { ApiError, ErrorType } from './apiClient';
 import { logError } from '../utils/logger';
 import { supabase } from '../lib/supabaseClient';
 import { openaiRateLimiter, createUserRateLimiter } from '../utils/rateLimiter';
-import { isWebContainerEnvironment } from '../utils/supabaseConnection';
+import { isWebContainerEnvironment, getConnectionStatus } from '../utils/supabaseConnection';
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -24,7 +24,7 @@ export const openaiApi = {
       // Check if we're in a WebContainer environment
       const isWebContainerEnv = isWebContainerEnvironment();
       
-      // If in WebContainer, use a mock response instead of trying to call the Edge Function
+      // If in WebContainer or offline, use a mock response instead of trying to call the Edge Function
       if (isWebContainerEnv) {
         console.log('WebContainer environment detected - using mock OpenAI response');
         
@@ -51,6 +51,21 @@ export const openaiApi = {
             {
               message: {
                 content: mockResponse
+              }
+            }
+          ]
+        };
+      }
+      
+      // Check connection status
+      const connectionStatus = await getConnectionStatus();
+      if (!connectionStatus.connected) {
+        console.log('Network connection unavailable - using mock OpenAI response');
+        return {
+          choices: [
+            {
+              message: {
+                content: "I'm your Biowell health coach. I'm currently operating in offline mode due to network connectivity issues. I can still provide general guidance, but my responses will be limited."
               }
             }
           ]
@@ -228,7 +243,7 @@ export const openaiApi = {
       // Check if we're in a WebContainer environment
       const isWebContainerEnv = isWebContainerEnvironment();
       
-      // If in WebContainer, provide a direct mock response
+      // If in WebContainer or offline, provide a direct mock response
       if (isWebContainerEnv) {
         console.log('WebContainer environment detected - using direct mock response');
         
@@ -246,6 +261,13 @@ export const openaiApi = {
         }
         
         return mockResponse;
+      }
+      
+      // Check connection status
+      const connectionStatus = await getConnectionStatus();
+      if (!connectionStatus.connected) {
+        console.log('Network connection unavailable - using mock response');
+        return "I'm your Biowell health coach. I'm currently operating in offline mode due to network connectivity issues. I can still provide general guidance, but my responses will be limited.";
       }
       
       // Format messages for the API
@@ -311,8 +333,21 @@ export const openaiApi = {
       // Check if we're in a WebContainer environment
       const isWebContainerEnv = isWebContainerEnvironment();
       
-      // If in WebContainer, provide mock data
+      // If in WebContainer or offline, provide mock data
       if (isWebContainerEnv) {
+        return {
+          firstName: "Demo",
+          lastName: "User",
+          gender: "not_specified",
+          mainGoal: "Improve sleep quality",
+          healthGoals: ["Better sleep", "Reduce stress", "Increase energy"],
+          supplementHabits: ["Vitamin D", "Magnesium"]
+        };
+      }
+      
+      // Check connection status
+      const connectionStatus = await getConnectionStatus();
+      if (!connectionStatus.connected) {
         return {
           firstName: "Demo",
           lastName: "User",
