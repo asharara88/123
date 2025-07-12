@@ -195,5 +195,4 @@ export function ConnectionStatus({ showDetails = false, className = '' }: Connec
     </div>
   );
 }
-
 export default ConnectionStatus;
