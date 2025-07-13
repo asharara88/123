@@ -192,7 +192,10 @@ export const useChatStore = create<ChatState>()(
       setSelectedVoice: (voiceId: string) => {
         set({ selectedVoice: voiceId });
       },
-      
+        // Only save to chat history if user is authenticated (not demo mode)
+        if (!context.demo && context.userId !== '00000000-0000-0000-0000-000000000000') {
+          await chatApi.saveChatMessage(userMessage, response, context);
+        }
       updateVoiceSettings: (settings) => {
         set({ voiceSettings: settings });
       }

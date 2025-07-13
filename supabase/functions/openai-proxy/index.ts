@@ -308,6 +308,31 @@ Deno.serve(async (req) => {
       console.log("OpenAI API request successful");
       console.log("Response tokens used:", data.usage?.total_tokens || "unknown");
       
+      // Save chat history if we have a valid user context
+      if (context && typeof context === 'object' && context.userId && context.userId !== '00000000-0000-0000-0000-000000000000') {
+        try {
+          const supabaseUrl = Deno.env.get("SUPABASE_URL");
+          const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+          
+          if (supabaseUrl && supabaseKey) {
+            const supabase = createClient(supabaseUrl, supabaseKey);
+            
+            await supabase
+              .from('chat_history')
+              .insert({
+                user_id: context.userId,
+                message: messages[messages.length - 1]?.content || '',
+                response: data.choices?.[0]?.message?.content || '',
+                role: 'assistant',
+                session_id: context.sessionId || null
+              });
+          }
+        } catch (historyError) {
+          console.error('Error saving chat history:', historyError);
+          // Don't fail the request if history saving fails
+        }
+      }
+      
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
