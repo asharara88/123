@@ -1,17 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Loader, User, CheckCircle, Moon, Brain, Heart, Activity, Zap, Shield, VolumeX, Volume2, Info } from 'lucide-react';
+import { Send, Loader, User, VolumeX, Volume2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { logError } from '../../utils/logger';
 import { useAutoScroll } from '../../hooks/useAutoScroll';
-import ReactMarkdown from 'react-markdown';
 import { useChatStore } from '../../store';
-import VoicePreferences from './VoicePreferences';
 import ChatSettingsButton from './ChatSettingsButton';
 import AudioVisualizer from './AudioVisualizer';
 import AudioPlayer from './AudioPlayer';
-import SuggestedQuestions from '../onboarding/SuggestedQuestions';
 import VoiceInput from './VoiceInput';
 import { MessageContent } from './MessageContent';
 import { SetupGuide } from '../common/SetupGuide';
@@ -168,12 +164,23 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
     }
   }, [audioUrl, preferSpeech]);
 
-  // Cleanup audio on unmount
+  // Cleanup audio and media recorder on unmount
   useEffect(() => {
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
+      }
+      if (mediaRecorderRef.current) {
+        // Check if MediaRecorder is in a state where it can be stopped
+        if (mediaRecorderRef.current.state === 'recording') {
+          mediaRecorderRef.current.stop();
+        }
+        mediaRecorderRef.current = null;
+      }
+      if (recordingTimeoutRef.current) {
+        clearTimeout(recordingTimeoutRef.current);
+        recordingTimeoutRef.current = null;
       }
     };
   }, []);
@@ -465,7 +472,7 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
           {/* Voice input component */}
           <div className="relative">
             <VoiceInput 
-              onTranscription={handleVoiceTranscription}
+              onVoiceInput={handleVoiceTranscription}
               disabled={loading}
             />
           </div>
