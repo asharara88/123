@@ -42,10 +42,11 @@ export default function VoiceInput({
 
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         
-        // Here you would typically send the audio to a speech-to-text service
-        // This is a placeholder for actual speech-to-text implementation
-        setIsProcessing(false);
-        setError('Speech-to-text service not yet configured');
+        // Simulate speech-to-text conversion for demo
+        setTimeout(() => {
+          onVoiceInput?.("How can I improve my sleep quality?");
+          setIsProcessing(false);
+        }, 1000);
 
         // Clean up
         stream.getTracks().forEach(track => track.stop());

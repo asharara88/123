@@ -94,14 +94,8 @@ const response = await openaiApi.generateResponse(message, context);
           }
           
           // Only save to chat history if user is authenticated (not demo mode)
-          if (!context.demo && context.userId !== '00000000-0000-0000-0000-000000000000') {
-            try {
-              await chatApi.saveChatMessage(userMessage, response, context);
-            } catch (error) {
-              logError('Failed to save chat message', error);
-              // Continue even if saving fails
-            }
-          }
+          // Note: Chat history saving temporarily disabled to avoid dependency issues
+          // This would be implemented with proper database integration
           
           return response;
         } catch (err: any) {

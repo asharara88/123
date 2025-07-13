@@ -5,6 +5,8 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import Chat from './pages/Chat';
+import Auth from './pages/Auth';
+import Settings from './pages/Settings';
 import './App.css';
 
 function App() {
@@ -17,6 +19,8 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/chat" element={<Chat />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/settings" element={<Settings />} />
             </Routes>
           </Layout>
         </Router>
