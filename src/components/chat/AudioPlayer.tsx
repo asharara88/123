@@ -1,4 +1,6 @@
+import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2 } from 'lucide-react';
+
 interface AudioPlayerProps {
   src?: string;
   onEnded?: () => void;
@@ -76,4 +78,3 @@ export default function AudioPlayer({ src, onEnded }: AudioPlayerProps) {
     </div>
   );
 };
-import { useState, useRef, useEffect } from 'react';
