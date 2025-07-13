@@ -30,17 +30,6 @@ export function ConnectionStatus({ showDetails = false, className = '' }: Connec
       // Check if we're in a WebContainer environment
       const isWebContainer = isWebContainerEnvironment();
       
-      // In WebContainer environments, we'll show a special status
-      if (isWebContainer) {
-        setConnectionState({
-          connected: true,
-          timestamp: new Date().toISOString(),
-          checking: false,
-          isWebContainer: true
-        });
-        return;
-      }
-      
       const status = await getConnectionStatus();
       
       setConnectionState({
@@ -48,7 +37,7 @@ export function ConnectionStatus({ showDetails = false, className = '' }: Connec
         error: status.error,
         timestamp: status.timestamp,
         checking: false,
-        isWebContainer: false
+        isWebContainer: isWebContainer
       });
 
       if (status.connected) {
@@ -62,7 +51,7 @@ export function ConnectionStatus({ showDetails = false, className = '' }: Connec
         error: error.message,
         timestamp: new Date().toISOString(),
         checking: false,
-        isWebContainer: false
+        isWebContainer: isWebContainerEnvironment()
       });
       
       logWarning('Connection status check failed', { error: error.message });
@@ -111,7 +100,7 @@ export function ConnectionStatus({ showDetails = false, className = '' }: Connec
 
   const getStatusText = () => {
     if (connectionState.checking) return 'Checking...';
-    if (connectionState.isWebContainer) return 'WebContainer';
+    if (connectionState.isWebContainer) return 'WebContainer (Live APIs)';
     return connectionState.connected ? 'Connected' : 'Offline';
   };
 
@@ -123,8 +112,10 @@ export function ConnectionStatus({ showDetails = false, className = '' }: Connec
     }
     
     if (connectionState.isWebContainer) {
-      return (
-        <div className="h-3 w-3 bg-blue-500 rounded-full"></div>
+      return connectionState.connected ? (
+        <div className="h-3 w-3 bg-green-500 rounded-full"></div>
+      ) : (
+        <div className="h-3 w-3 bg-red-500 rounded-full"></div>
       );
     }
     
@@ -135,10 +126,6 @@ export function ConnectionStatus({ showDetails = false, className = '' }: Connec
     );
   };
 
-  // Hide the connection status indicator completely when in WebContainer environment
-  if (!showDetails && connectionState.isWebContainer) {
-    return null;
-  }
 
   if (!showDetails) {
     return (
@@ -168,7 +155,7 @@ export function ConnectionStatus({ showDetails = false, className = '' }: Connec
           
           {connectionState.isWebContainer && (
             <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-              Running in WebContainer environment - limited network connectivity
+              Running in WebContainer environment - using live APIs
             </p>
           )}
           
@@ -191,8 +178,8 @@ export function ConnectionStatus({ showDetails = false, className = '' }: Connec
           
           {connectionState.isWebContainer && (
             <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              <p>WebContainer environments have limited network access.</p>
-              <p>The app will run in demo mode with simulated data.</p>
+              <p>WebContainer environment detected.</p>
+              <p>The app is using live APIs and real data.</p>
             </div>
           )}
         </div>

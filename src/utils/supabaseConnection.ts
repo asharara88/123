@@ -64,8 +64,6 @@ export const testConnection = async (timeoutMs: number = 3000): Promise<boolean>
       return false
     }
 
-    // Create an AbortController for timeout
-    const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
     
     try {
@@ -74,12 +72,6 @@ export const testConnection = async (timeoutMs: number = 3000): Promise<boolean>
       clearTimeout(timeoutId)
       
       // If we can get session without error, connection is working
-      return !error
-      
-    } catch (fetchError: any) {
-      clearTimeout(timeoutId)
-      
-      if (fetchError.name === 'AbortError') {
         return false
       }
       
@@ -145,12 +137,6 @@ export const checkSupabaseConnection = async (maxAttempts: number = 1): Promise<
       }
       
       // If this isn't the last attempt, wait before retrying
-      if (attempt < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 500))
-      }
-      
-    } catch (error: any) {
-      const attemptInfo = {
         attempt,
         maxAttempts,
         willRetry: attempt < maxAttempts,
@@ -202,14 +188,6 @@ export const isSupabaseConnected = async (): Promise<boolean> => {
     
   } catch (error) {
     // Silently fail for status checks
-    return false
-  }
-}
-
-// Get connection status without side effects
-export const getConnectionStatus = async (): Promise<{
-  connected: boolean
-  error?: string
   timestamp: string
 }> => {
   const timestamp = new Date().toISOString()
@@ -231,35 +209,6 @@ export const initializeConnection = async (): Promise<boolean> => {
   logInfo('Initializing Supabase connection...', {})
   
   try {
-    // Check if we're in a WebContainer environment
-    if (isWebContainerEnvironment()) {
-      logInfo('WebContainer environment detected - skipping network connectivity test', {})
-      
-      // Just verify credentials are configured
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-      
-      if (!supabaseUrl || !supabaseAnonKey) {
-        logInfo('Supabase credentials not configured', {})
-        return false
-      }
-      
-      // Check for placeholder values
-      const isPlaceholderUrl = supabaseUrl.includes('your-project-ref.supabase.co') || 
-                              supabaseUrl.includes('your-project.supabase.co') ||
-                              supabaseUrl.includes('placeholder')
-      
-      const isPlaceholderKey = supabaseAnonKey.includes('your-anon-key-here') ||
-                              supabaseAnonKey.includes('placeholder')
-      
-      if (isPlaceholderUrl || isPlaceholderKey) {
-        logInfo('Placeholder Supabase credentials detected', {})
-        return false
-      }
-      
-      logInfo('Supabase credentials configured - assuming connection is available', {})
-      return true
-    }
 
     const isConnected = await checkSupabaseConnection(1) // Only 1 attempt on startup
     

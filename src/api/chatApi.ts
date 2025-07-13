@@ -72,11 +72,6 @@ export const chatApi = {
    * Save a chat message and response
    */
   async saveChatMessage(userId: string, message: string, response: string): Promise<void> {
-    // Don't save chat messages for demo users
-    if (userId === '00000000-0000-0000-0000-000000000000') {
-      return;
-    }
-    
     await apiClient.request(
       async () => {
         const result = await supabase

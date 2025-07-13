@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { logError } from '../utils/logger';
+import { supabase } from '../lib/supabaseClient';
 
 // System prompt for direct OpenAI API calls
 const SYSTEM_PROMPT = `You are Biowell AI, a personalized health coach focused on providing evidence-based health advice and supplement recommendations.
@@ -42,11 +43,6 @@ export const openaiApi = {
    * Generate a response using direct OpenAI API only
    */
   async generateResponse(prompt: string, context?: Record<string, any>): Promise<string> {
-    // For demo users, provide a helpful response without using APIs
-    if (context?.demo === true) {
-      return "I'm currently in demo mode. To get personalized health advice, please sign up for a full account or configure your OpenAI API key in the environment variables.";
-    }
-    
     if (!openai) {
       throw new Error('OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY in your environment variables.');
     }
@@ -132,23 +128,15 @@ export const openaiApi = {
   },
   
   /**
-    // Don't try to use Edge Function for demo users
-    if (context?.demo === true) {
-      throw new Error("Demo users cannot use Edge Function - please configure OpenAI API key");
-    }
-    
-   * Extract structured data from onboarding conversation
-   */
-  async extractOnboardingData(messages: any[]): Promise<any> {
-    if (!openai) {
-      throw new Error('OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY in your environment variables.');
-    }
 
+      // Get current session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      
     try {
       // Format messages for the API
       const formattedMessages = [
         { 
-          role: 'system', 
+          'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           content: 'Extract structured data from this onboarding conversation. Return a JSON object with fields like firstName, lastName, gender, mainGoal, healthGoals, supplementHabits, etc.' 
         },
         ...messages
