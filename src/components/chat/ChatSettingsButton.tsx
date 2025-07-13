@@ -1,11 +1,32 @@
 interface ChatSettingsButtonProps {
-  // Add props as needed
+  className?: string;
+  showVoiceSettings?: boolean;
+  onVoiceToggle?: () => void;
+  selectedVoice?: string;
+  onVoiceSelect?: (voice: string) => void;
+  voiceSettings?: {
+    stability: number;
+    similarityBoost: number;
+  };
+  onVoiceSettingsUpdate?: (settings: { stability: number; similarityBoost: number }) => void;
 }
 
-export default function ChatSettingsButton(props: ChatSettingsButtonProps) {
+export default function ChatSettingsButton({ 
+  className = "",
+  showVoiceSettings = false,
+  onVoiceToggle,
+  selectedVoice,
+  onVoiceSelect,
+  voiceSettings,
+  onVoiceSettingsUpdate
+}: ChatSettingsButtonProps) {
   return (
-    <button className="p-2 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800">
-      <span className="text-sm">Settings</span>
+    <button 
+      className={`p-2 rounded-lg hover:bg-[hsl(var(--color-card-hover))] text-[hsl(var(--color-text-light))] ${className}`}
+      title="Chat Settings"
+    >
+      <Settings className="h-4 w-4" />
     </button>
   );
 };
+import { Settings } from 'lucide-react';

@@ -1,0 +1,90 @@
+/* Additional app-specific styles */
+.app-container {
+  min-height: 100vh;
+  background-color: rgb(var(--color-background));
+}
+
+/* Utility classes for consistent styling */
+.text-primary {
+  color: rgb(var(--color-primary));
+}
+
+.text-text {
+  color: rgb(var(--color-text));
+}
+
+.text-text-light {
+  color: rgb(var(--color-text-light));
+}
+
+.bg-primary {
+  background-color: rgb(var(--color-primary));
+}
+
+.bg-primary-dark {
+  background-color: rgb(var(--color-primary-dark));
+}
+
+.border-primary {
+  border-color: rgb(var(--color-primary));
+}
+
+/* Card and surface styling */
+.surface {
+  background-color: rgb(var(--color-surface-1));
+}
+
+.card {
+  background-color: rgb(var(--color-card));
+  border: 1px solid rgb(var(--color-border));
+}
+
+.card-hover {
+  background-color: rgb(var(--color-card-hover));
+}
+
+/* Button styles */
+.btn-primary {
+  background-color: rgb(var(--color-primary));
+  color: white;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: rgb(var(--color-primary-dark));
+}
+
+/* Loading animations */
+.loading-dots {
+  display: inline-block;
+}
+
+.loading-dots::after {
+  content: '';
+  animation: dots 1.5s steps(5, end) infinite;
+}
+
+@keyframes dots {
+  0%, 20% {
+    color: rgba(0,0,0,0);
+    text-shadow:
+      .25em 0 0 rgba(0,0,0,0),
+      .5em 0 0 rgba(0,0,0,0);
+  }
+  40% {
+    color: currentColor;
+    text-shadow:
+      .25em 0 0 rgba(0,0,0,0),
+      .5em 0 0 rgba(0,0,0,0);
+  }
+  60% {
+    text-shadow:
+      .25em 0 0 currentColor,
+      .5em 0 0 rgba(0,0,0,0);
+  }
+  80%, 100% {
+    text-shadow:
+      .25em 0 0 currentColor,
+      .5em 0 0 currentColor;
+  }
+}

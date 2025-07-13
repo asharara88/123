@@ -1,14 +1,25 @@
 interface AudioVisualizerProps {
-  // Add props as needed
+  audioUrl?: string;
+  isPlaying?: boolean;
 }
 
-export default function AudioVisualizer(props: AudioVisualizerProps) {
+export default function AudioVisualizer({ audioUrl, isPlaying = false }: AudioVisualizerProps) {
+  if (!audioUrl) return null;
+
   return (
-    <div className="flex items-center gap-1">
-      <div className="w-1 h-4 bg-blue-500 rounded animate-pulse"></div>
-      <div className="w-1 h-6 bg-blue-500 rounded animate-pulse" style={{ animationDelay: '0.1s' }}></div>
-      <div className="w-1 h-3 bg-blue-500 rounded animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-      <div className="w-1 h-5 bg-blue-500 rounded animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+    <div className="flex items-center justify-center gap-1 py-2">
+      {[...Array(12)].map((_, i) => (
+        <div
+          key={i}
+          className={`w-1 bg-[hsl(var(--color-primary))] rounded-full transition-all duration-150 ${
+            isPlaying ? 'animate-pulse' : 'opacity-50'
+          }`}
+          style={{
+            height: `${Math.random() * 20 + 8}px`,
+            animationDelay: `${i * 0.1}s`,
+          }}
+        />
+      ))}
     </div>
   );
 };

@@ -2,10 +2,10 @@ import ReactMarkdown from 'react-markdown';
 
 interface MessageContentProps {
   content: string;
-  role: 'user' | 'assistant' | 'system';
+  role?: 'user' | 'assistant' | 'system';
 }
 
-export const MessageContent = ({ content, role }: MessageContentProps) => {
+export const MessageContent = ({ content, role = 'assistant' }: MessageContentProps) => {
   if (role === 'user') {
     return (
       <div className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
