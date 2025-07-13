@@ -1,5 +1,22 @@
 import OpenAI from 'openai';
 import { logError } from '../utils/logger';
+
+// OpenAI message interface for type safety
+export interface OpenAIMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+// Onboarding data structure
+export interface OnboardingData {
+  firstName?: string;
+  lastName?: string;
+  gender?: string;
+  mainGoal?: string;
+  healthGoals?: string[];
+  supplementHabits?: string[];
+  [key: string]: any; // Allow additional fields
+}
 import { supabase } from '../lib/supabaseClient';
 
 // System prompt for direct OpenAI API calls
@@ -93,7 +110,7 @@ export const openaiApi = {
   /**
    * Process onboarding conversation
    */
-  async processOnboarding(messages: any[]): Promise<string> {
+  async processOnboarding(messages: OpenAIMessage[]): Promise<string> {
     if (!openai) {
       throw new Error('OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY in your environment variables.');
     }
@@ -128,15 +145,18 @@ export const openaiApi = {
   },
   
   /**
+   * Extract structured data from onboarding conversation
+   */
+  async extractOnboardingData(messages: OpenAIMessage[]): Promise<OnboardingData> {
+    if (!openai) {
+      throw new Error('OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY in your environment variables.');
+    }
 
-      // Get current session for authentication
-      const { data: { session } } = await supabase.auth.getSession();
-      
     try {
       // Format messages for the API
       const formattedMessages = [
         { 
-          'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          role: 'system', 
           content: 'Extract structured data from this onboarding conversation. Return a JSON object with fields like firstName, lastName, gender, mainGoal, healthGoals, supplementHabits, etc.' 
         },
         ...messages
@@ -164,4 +184,3 @@ export const openaiApi = {
     }
   }
 };
-}

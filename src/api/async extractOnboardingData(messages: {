@@ -1,0 +1,45 @@
+// Make sure to import or initialize openai before using it
+import { OpenAIApi, Configuration } from 'openai';
+
+const openai = new OpenAIApi(
+  new Configuration({
+    apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+  })
+);
+
+export const openaiApi = {
+  async extractOnboardingData(messages: { role: 'system' | 'user' | 'assistant', content: string }[]): Promise<any> {
+    if (!openai) {
+      throw new Error('OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY in your environment variables.');
+    }
+    
+    try {
+      const formattedMessages = [
+        { 
+          role: 'system',
+          content: 'Extract structured data from this onboarding conversation. Return a JSON object with fields like firstName, lastName, gender, mainGoal, healthGoals, supplementHabits, etc.' 
+        },
+        ...messages
+      ];
+      
+      // Call OpenAI API
+      const completion = await openai.createChatCompletion({
+        model: 'gpt-4',
+        messages: formattedMessages,
+        temperature: 0
+      });
+      
+      // Extract and parse the response
+      const content = completion.data.choices[0]?.message?.content;
+      
+      if (!content) {
+        throw new Error('No data extracted from OpenAI API');
+      }
+      
+      return JSON.parse(content);
+    } catch (err) {
+      console.error('Error extracting onboarding data', err);
+      throw err;
+    }
+  }
+};
