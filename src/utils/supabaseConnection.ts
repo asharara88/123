@@ -64,6 +64,7 @@ export const testConnection = async (timeoutMs: number = 3000): Promise<boolean>
       return false
     }
 
+    const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
     
     try {
@@ -72,6 +73,9 @@ export const testConnection = async (timeoutMs: number = 3000): Promise<boolean>
       clearTimeout(timeoutId)
       
       // If we can get session without error, connection is working
+      if (!error) {
+        return true
+      } else {
         return false
       }
       
@@ -82,6 +86,8 @@ export const testConnection = async (timeoutMs: number = 3000): Promise<boolean>
       } catch {
         return false
       }
+    } finally {
+      clearTimeout(timeoutId)
     }
     
   } catch (error: any) {
@@ -137,6 +143,7 @@ export const checkSupabaseConnection = async (maxAttempts: number = 1): Promise<
       }
       
       // If this isn't the last attempt, wait before retrying
+      const attemptInfo = {
         attempt,
         maxAttempts,
         willRetry: attempt < maxAttempts,
@@ -159,6 +166,8 @@ export const checkSupabaseConnection = async (maxAttempts: number = 1): Promise<
       } else {
         await new Promise(resolve => setTimeout(resolve, 500))
       }
+    } catch (error: any) {
+      // Handle error
     }
   }
   
@@ -188,6 +197,13 @@ export const isSupabaseConnected = async (): Promise<boolean> => {
     
   } catch (error) {
     // Silently fail for status checks
+    return false
+  }
+}
+
+export const getConnectionStatus = async (): Promise<{
+  connected: boolean,
+  error?: string,
   timestamp: string
 }> => {
   const timestamp = new Date().toISOString()
@@ -209,7 +225,6 @@ export const initializeConnection = async (): Promise<boolean> => {
   logInfo('Initializing Supabase connection...', {})
   
   try {
-
     const isConnected = await checkSupabaseConnection(1) // Only 1 attempt on startup
     
     if (isConnected) {
