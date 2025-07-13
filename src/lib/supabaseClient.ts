@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Use demo credentials for development
-const supabaseUrl = 'https://demo.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
+// Get Supabase credentials from environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -15,9 +15,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Legacy function - kept for backward compatibility but simplified
 export const testConnection = async (): Promise<boolean> => {
   try {
-    // Always return true for demo mode
-    return true
+    // Test connection by getting session
+    const { error } = await supabase.auth.getSession()
+    return !error
   } catch (error) {
-    return true
+    console.error('Supabase connection test failed:', error)
+    return false
   }
 }

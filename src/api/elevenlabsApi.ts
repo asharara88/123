@@ -30,7 +30,8 @@ export const VOICE_SETTINGS = {
   EXPRESSIVE: {
     stability: 0.3,
     similarity_boost: 0.85,
-    style: 0.7
+    style: 0.7,
+    use_speaker_boost: true
   }
 };
 
@@ -44,35 +45,45 @@ export const elevenlabsApi = {
     voiceSettings = VOICE_SETTINGS.STANDARD
   ): Promise<Blob> {
     try {
-      // Process text for better speech synthesis
-      const processedText = prepareTextForSpeech(text);
-
-      // Create a simple audio blob for demo purposes
-      // This creates a 2-second sine wave tone
-      const sampleRate = 44100;
-      const duration = 2;
-      const audioContext = new AudioContext();
-      const audioBuffer = audioContext.createBuffer(1, sampleRate * duration, sampleRate);
-      const channelData = audioBuffer.getChannelData(0);
-      
-      // Generate a simple sine wave
-      for (let i = 0; i < audioBuffer.length; i++) {
-        channelData[i] = Math.sin(i * 0.01) * 0.5;
+      // Check if API key is available
+      const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
+      if (!apiKey) {
+        throw new Error('ElevenLabs API key is not configured');
       }
       
-      // Convert AudioBuffer to WAV format
-      const offlineContext = new OfflineAudioContext(1, sampleRate * duration, sampleRate);
-      const source = offlineContext.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(offlineContext.destination);
-      source.start();
+      // Process text for better speech synthesis
+      const processedText = prepareTextForSpeech(text);
+      const trimmedText = truncateForSpeech(processedText, 5000);
       
-      const renderedBuffer = await offlineContext.startRendering();
+      // Prepare request body
+      const body = JSON.stringify({
+        text: trimmedText,
+        model_id: "eleven_monolingual_v1",
+        voice_settings: {
+          stability: voiceSettings.stability,
+          similarity_boost: voiceSettings.similarity_boost,
+          style: voiceSettings.style || 0.0,
+          use_speaker_boost: voiceSettings.use_speaker_boost || true
+        }
+      });
       
-      // Convert to WAV
-      const wavBlob = this.bufferToWav(renderedBuffer);
+      // Make API request
+      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'xi-api-key': apiKey
+        },
+        body
+      });
       
-      return wavBlob;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`ElevenLabs API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
+      }
+      
+      // Return audio blob
+      return await response.blob();
     } catch (error: unknown) {
       logError('ElevenLabs API error', error);
       
@@ -87,81 +98,9 @@ export const elevenlabsApi = {
   },
   
   /**
-   * Convert AudioBuffer to WAV format
-   */
-  bufferToWav(buffer: AudioBuffer): Blob {
-    const numChannels = buffer.numberOfChannels;
-    const sampleRate = buffer.sampleRate;
-    const format = 1; // PCM
-    const bitDepth = 16;
-    
-    const bytesPerSample = bitDepth / 8;
-    const blockAlign = numChannels * bytesPerSample;
-    
-    const dataLength = buffer.length * numChannels * bytesPerSample;
-    const bufferLength = 44 + dataLength;
-    
-    const arrayBuffer = new ArrayBuffer(bufferLength);
-    const view = new DataView(arrayBuffer);
-    
-    // RIFF identifier
-    this.writeString(view, 0, 'RIFF');
-    // RIFF chunk length
-    view.setUint32(4, 36 + dataLength, true);
-    // RIFF type
-    this.writeString(view, 8, 'WAVE');
-    // format chunk identifier
-    this.writeString(view, 12, 'fmt ');
-    // format chunk length
-    view.setUint32(16, 16, true);
-    // sample format (raw)
-    view.setUint16(20, format, true);
-    // channel count
-    view.setUint16(22, numChannels, true);
-    // sample rate
-    view.setUint32(24, sampleRate, true);
-    // byte rate (sample rate * block align)
-    view.setUint32(28, sampleRate * blockAlign, true);
-    // block align (channel count * bytes per sample)
-    view.setUint16(32, blockAlign, true);
-    // bits per sample
-    view.setUint16(34, bitDepth, true);
-    // data chunk identifier
-    this.writeString(view, 36, 'data');
-    // data chunk length
-    view.setUint32(40, dataLength, true);
-    
-    // Write the PCM samples
-    const offset = 44;
-    let pos = offset;
-    for (let i = 0; i < buffer.length; i++) {
-      for (let channel = 0; channel < numChannels; channel++) {
-        const sample = buffer.getChannelData(channel)[i];
-        // Clamp the sample to the range [-1, 1]
-        const clampedSample = Math.max(-1, Math.min(1, sample));
-        // Convert to 16-bit PCM
-        const value = clampedSample < 0 ? clampedSample * 0x8000 : clampedSample * 0x7FFF;
-        view.setInt16(pos, value, true);
-        pos += 2;
-      }
-    }
-    
-    return new Blob([arrayBuffer], { type: 'audio/wav' });
-  },
-  
-  /**
-   * Helper function to write a string to a DataView
-   */
-  writeString(view: DataView, offset: number, string: string): void {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
-    }
-  },
-
-  /**
    * Check if the API key is configured
    */
   isConfigured(): boolean {
-    return true; // Always return true for demo purposes
+    return !!import.meta.env.VITE_ELEVENLABS_API_KEY;
   }
 };

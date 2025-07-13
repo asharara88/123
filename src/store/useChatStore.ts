@@ -3,7 +3,6 @@ import { persist } from 'zustand/middleware';
 import { chatApi, ChatMessage } from '../api/chatApi';
 import { logError } from '../utils/logger';
 import { openaiApi } from '../api/openaiApi'; 
-import { isWebContainerEnvironment } from '../utils/supabaseConnection';
 import { elevenlabsApi } from '../api/elevenlabsApi';
 
 export interface ChatState {
@@ -65,7 +64,10 @@ export const useChatStore = create<ChatState>()(
           set({ messages: [...get().messages, userMessage], audioUrl: null });
           
           // Use OpenAI API through our proxy
-          const response = await openaiApi.generateResponse(message, { userId });
+          const response = await openaiApi.generateResponse(message, { 
+            userId,
+            timestamp: new Date().toISOString()
+          });
           
           // Add assistant response to state
           const assistantMessage: ChatMessage = {
@@ -87,17 +89,9 @@ export const useChatStore = create<ChatState>()(
           // Save to chat history if userId is provided
           if (userId) {
             try {
-              const isWebContainerEnv = isWebContainerEnvironment();
-              // Only try to save if not in WebContainer
-              if (!isWebContainerEnv) {
-                await chatApi.saveChatMessage(userId, message, response);
-              }
+              await chatApi.saveChatMessage(userId, message, response);
             } catch (error) {
-              // Only log error if not in WebContainer
-              const isWebContainerEnv = isWebContainerEnvironment();
-              if (!isWebContainerEnv) {
-                logError('Failed to save chat message', error);
-              }
+              logError('Failed to save chat message', error);
               // Continue even if saving fails
             }
           }
@@ -166,11 +160,6 @@ export const useChatStore = create<ChatState>()(
       
       fetchChatHistory: async (userId) => {
         if (!userId) return;
-        
-        // Skip in WebContainer environment
-        if (isWebContainerEnvironment()) {
-          return;
-        }
         
         set({ loading: true, error: null });
         

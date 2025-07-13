@@ -115,7 +115,17 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
     setShowSuggestions(false);
 
     try {
-      await sendMessage(messageContent, user?.id || (isDemo ? '00000000-0000-0000-0000-000000000000' : undefined));
+      // Add user context to the message
+      const userContext = {
+        userId: user?.id || (isDemo ? '00000000-0000-0000-0000-000000000000' : undefined),
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+        demo: isDemo
+      };
+      
+      await sendMessage(messageContent, userContext);
     } catch (err: any) {
       // Show setup guide for configuration errors
       if (err && typeof err === 'object' && 'setupRequired' in err) {
