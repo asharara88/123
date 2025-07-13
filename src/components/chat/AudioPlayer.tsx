@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2 } from 'lucide-react';
 
-
 interface AudioPlayerProps {
   src?: string;
   onEnded?: () => void;
@@ -76,7 +75,6 @@ export default function AudioPlayer({ src, onEnded }: AudioPlayerProps) {
       </div>
       
       <Volume2 size={16} className="text-[hsl(var(--color-text-light))]" />
-import React, { useState, useRef, useEffect } from 'react';
     </div>
-  )
+  );
 }
