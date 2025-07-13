@@ -48,6 +48,11 @@ export const openaiApi = {
     try {
       // Check if OpenAI client is initialized
       if (!openai) {
+        // If this is a demo user, throw a specific error instead of trying Edge Function
+        if (context?.demo === true) {
+          throw new Error('OpenAI API key is required for chat functionality. Please configure VITE_OPENAI_API_KEY in your environment variables.');
+        }
+        
         // Try to use Supabase Edge Function instead
         return await this.generateResponseViaEdgeFunction(prompt, context);
       }
