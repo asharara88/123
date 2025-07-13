@@ -63,11 +63,17 @@ export const useChatStore = create<ChatState>()(
           
           set({ messages: [...get().messages, userMessage], audioUrl: null });
           
-          // Use OpenAI API through our proxy
-          const response = await openaiApi.generateResponse(message, { 
-            userId,
-            timestamp: new Date().toISOString()
-          });
+          let response;
+          try {
+            // Use OpenAI API through our proxy
+            response = await openaiApi.generateResponse(message, { 
+              userId,
+              timestamp: new Date().toISOString()
+            });
+          } catch (error) {
+            logError('Error generating response', error);
+            response = "I'm sorry, I'm having trouble connecting to my knowledge base right now. Please try again later or check your API configuration.";
+          }
           
           // Add assistant response to state
           const assistantMessage: ChatMessage = {
