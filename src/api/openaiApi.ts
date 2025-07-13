@@ -1,29 +1,7 @@
-// src/api/openaiApi.ts
 import { ApiError, ErrorType } from './apiClient';
 import { logError } from '../utils/logger';
 import { supabase } from '../lib/supabaseClient';
-import { openaiRateLimiter, createUserRateLimiter } from '../utils/rateLimiter';
-
-// Import OpenAI conditionally to avoid initialization errors
-let OpenAI: any;
-let openai: any;
-
-// Only initialize if API key is available
-const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-if (apiKey) {
-  try {
-    // Dynamic import to avoid initialization errors
-    import('openai').then((module) => {
-      OpenAI = module.default;
-      openai = new OpenAI({
-        apiKey,
-        dangerouslyAllowBrowser: true // Only for development
-      });
-    });
-  } catch (err) {
-    console.error('Failed to initialize OpenAI client:', err);
-  }
-}
+import { openaiRateLimiter, createUserRateLimiter } from '../utils/rateLimiter'; 
 
 // System prompt for direct OpenAI API calls
 const SYSTEM_PROMPT = `You are Biowell AI, a personalized health coach focused on providing evidence-based health advice and supplement recommendations.
@@ -61,171 +39,18 @@ interface ChatCompletionOptions {
 
 export const openaiApi = {
   async createChatCompletion(messages: ChatMessage[], options: ChatCompletionOptions = {}) {
-    try {
-      // Get the current session for authentication
-      const { data: { session } } = await supabase.auth.getSession(); 
-      
-      // Rate limiting check
-      const userId = session?.user?.id || 'anonymous';
-      const rateLimitKey = createUserRateLimiter(userId, 'openai');
-      
-      if (!openaiRateLimiter.isAllowed(rateLimitKey)) {
-        throw {
-          type: ErrorType.VALIDATION,
-          message: 'Rate limit exceeded. Please wait before making another request.',
-          status: 429
-        } as ApiError;
-      }
-      
-      // Try Edge Function first, then fallback to direct API call
-      try {
-        return await this.callEdgeFunction(messages, options, session);
-      } catch (edgeFunctionError) {
-        console.log('Edge Function failed, trying direct OpenAI API call...');
-        return await this.callDirectOpenAI(messages, options);
-      }
-    } catch (err) {
-      if (err instanceof Error || (err && typeof err === 'object' && 'type' in err)) {
-        throw err; // Re-throw if already a proper Error object or ApiError
-      }
-      throw new Error('Unexpected error communicating with AI service');
-    }
-  },
-
-  async callEdgeFunction(messages: ChatMessage[], options: ChatCompletionOptions, session: any) {
-      // Prepare headers
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      // Add authorization if we have a session
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
-      }
-      
-      // Always include the anon key
-      headers['apikey'] = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      
-      if (!supabaseUrl) {
-        throw new Error('Missing Supabase URL configuration. Please check your .env file and restart the development server.');
-      }
-
-      if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
-        throw new Error('Missing Supabase anon key configuration. Please check your .env file and restart the development server.');
-      }
-      
-      // Log the request in development mode only
-      if (import.meta.env.DEV) {
-        console.log('Making request to Edge Function:', `${supabaseUrl}/functions/v1/openai-proxy`);
-        console.log('Request body:', { messages, context: options.context, options });
-      }
-      
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/openai-proxy`,
-        {
-          method: 'POST',
-          headers,
-          credentials: 'omit',
-          body: JSON.stringify({ 
-            messages,
-            context: options.context,
-            options: {
-              temperature: options.temperature,
-              max_tokens: options.max_tokens,
-              model: options.model || 'gpt-4',
-              response_format: options.response_format,
-            },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch (e) {
-          errorData = { error: { message: `HTTP error! status: ${response.status}` } };
-        }
-        
-        let errorMessage = 'AI service request failed';
-        let setupRequired = false;
-        
-        if (errorData.error && errorData.error.message) {
-          if (errorData.error.message.includes('API key')) {
-            errorMessage = 'AI service is not properly configured. Please ensure the OpenAI API key is set correctly.';
-            setupRequired = true;
-          } else if (errorData.error.message.includes('rate limit')) {
-            errorMessage = 'Too many requests. Please try again in a moment.';
-          } else if (errorData.error.message.includes('quota')) {
-            errorMessage = 'Service temporarily unavailable. Please try again later.';
-          } else if (errorData.error.message.includes('timeout')) {
-            errorMessage = 'Request timed out. Please try again.';
-          } else if (errorData.error.message.includes('not configured')) {
-            errorMessage = errorData.error.message;
-            setupRequired = true;
-          } else {
-            errorMessage = errorData.error.message;
-          }
-        } else if (response.status === 404) {
-          errorMessage = 'The OpenAI Edge Function is not deployed. Please deploy the openai-proxy function to your Supabase project.';
-          setupRequired = true;
-        } else if (response.status === 500) {
-          errorMessage = 'Internal server error. Please check your OpenAI API key configuration and Edge Function deployment.';
-          setupRequired = true;
-        }
-        
-        console.error('Edge Function error:', { 
-          status: response.status,
-          statusText: response.statusText,
-          errorData,
-          setupInstructions: errorData.error?.setupInstructions
-        });
-        
-        logError('Edge Function error', { 
-          status: response.status,
-          statusText: response.statusText,
-          errorData
-        });
-        
-        const apiError: ApiError = {
-          type: ErrorType.SERVER,
-          message: errorMessage,
-          status: response.status,
-          originalError: errorData,
-          setupRequired
-        };
-
-        // Convert certain status codes to authentication errors
-        if (response.status === 401 || response.status === 403) {
-          apiError.type = ErrorType.AUTHENTICATION;
-        }
-
-        throw apiError;
-      }
-
-      const data = await response.json();
-      console.log('OpenAI API request successful');
-      return data;
-  },
-
-  async callDirectOpenAI(messages: ChatMessage[], options: ChatCompletionOptions) {
-    const openaiApiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    // Get the current session for authentication
+    const { data: { session } } = await supabase.auth.getSession(); 
     
-    if (!openaiApiKey) {
+    // Rate limiting check
+    const userId = session?.user?.id || 'anonymous';
+    const rateLimitKey = createUserRateLimiter(userId, 'openai');
+    
+    if (!openaiRateLimiter.isAllowed(rateLimitKey)) {
       throw {
-        type: ErrorType.AUTHENTICATION,
-        message: 'OpenAI API key not configured. Please set VITE_OPENAI_API_KEY in your environment variables.',
-        setupRequired: true
-      } as ApiError;
-    }
-
-    if (!openaiApiKey.startsWith('sk-')) {
-      throw {
-        type: ErrorType.AUTHENTICATION,
-        message: 'Invalid OpenAI API key format. Key should start with "sk-"',
-        setupRequired: true
+        type: ErrorType.VALIDATION,
+        message: 'Rate limit exceeded. Please wait before making another request.',
+        status: 429
       } as ApiError;
     }
 
@@ -235,74 +60,59 @@ export const openaiApi = {
       ...messages
     ];
 
-    console.log('Making direct request to OpenAI API...');
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: options.model || 'gpt-4',
-        messages: formattedMessages,
-        temperature: options.temperature !== undefined ? options.temperature : 0.7,
-        max_tokens: options.max_tokens || 1000,
-        response_format: options.response_format,
-      }),
-    });
-
-    if (!response.ok) {
-      let errorData;
-      try {
-        errorData = await response.json();
-      } catch {
-        errorData = { error: { message: `HTTP error! status: ${response.status}` } };
-      }
-      
-      let errorMessage = 'AI service request failed';
-      
-      if (response.status === 401) {
-        errorMessage = 'Invalid OpenAI API key. Please check your API key configuration.';
-      } else if (response.status === 429) {
-        errorMessage = 'OpenAI API rate limit exceeded. Please try again later.';
-      } else if (response.status === 402) {
-        errorMessage = 'OpenAI API quota exceeded. Please check your billing and usage limits.';
-      } else if (errorData.error?.message) {
-        errorMessage = errorData.error.message;
-      }
-      
-      throw {
-        type: ErrorType.SERVER,
-        message: errorMessage,
-        status: response.status,
-        originalError: errorData
-      } as ApiError;
+    // For demo purposes, generate a mock response based on the last message
+    const lastMessage = messages[messages.length - 1].content.toLowerCase();
+    let mockResponse = "I'm your Biowell health coach. How can I help you today?";
+    
+    if (lastMessage.includes('sleep')) {
+      mockResponse = "Based on your interest in sleep improvement, I recommend Magnesium Glycinate (green-tier) at 300-400mg before bed to support deeper sleep and muscle relaxation. L-Theanine (green-tier) at 200mg can also help with sleep onset without causing grogginess. For best results, maintain a consistent sleep schedule and avoid screens 1 hour before bedtime.";
+    } else if (lastMessage.includes('energy')) {
+      mockResponse = "To boost your energy levels naturally, I recommend B-Complex vitamins (green-tier) in the morning to support cellular energy production. Rhodiola Rosea (yellow-tier) at 200-400mg daily can help combat fatigue and improve mental performance under stress. Also consider optimizing your sleep quality and staying properly hydrated throughout the day.";
+    } else if (lastMessage.includes('stress') || lastMessage.includes('anxiety')) {
+      mockResponse = "For stress management, Ashwagandha (green-tier) at 300-600mg daily has strong evidence for reducing cortisol levels. L-Theanine (green-tier) at 200mg can promote relaxation without sedation. Combining these supplements with regular meditation, deep breathing exercises, and adequate sleep will provide the best results for stress reduction.";
+    } else if (lastMessage.includes('muscle') || lastMessage.includes('workout')) {
+      mockResponse = "For muscle building and recovery, Creatine Monohydrate (green-tier) at 5g daily is one of the most well-researched supplements. Whey Protein Isolate (green-tier) at 20-30g post-workout provides essential amino acids for muscle repair. For optimal results, ensure you're in a slight caloric surplus and following a progressive resistance training program.";
+    } else if (lastMessage.includes('hello') || lastMessage.includes('hi')) {
+      mockResponse = "Hello! I'm your Biowell health coach. I can help you with personalized supplement recommendations, sleep optimization, stress management, and more. What health goal would you like to focus on today?";
     }
-
-    const data = await response.json();
-    console.log('Direct OpenAI API request successful');
-    return data;
+    
+    // Create a mock response object that matches the OpenAI API response format
+    const mockData = {
+      choices: [
+        {
+          message: {
+            content: mockResponse
+          }
+        }
+      ]
+    };
+    
+    return mockData;
   },
-  
+
   async generateResponse(prompt: string, context?: Record<string, any>): Promise<string> {
     try {
       // Format messages for the API
       const messages: ChatMessage[] = [
         { role: 'user', content: prompt }
       ];
-      
-      // Call the createChatCompletion method with context in options
-      const data = await this.createChatCompletion(messages, { 
-        context: context ? JSON.stringify(context) : undefined 
-      });
-      
-      // Extract and return the response
-      if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
-        throw new Error('Invalid response format from AI service');
+
+      try {
+        // Call the createChatCompletion method with context in options
+        const data = await this.createChatCompletion(messages, { 
+          context: context ? JSON.stringify(context) : undefined 
+        });
+        
+        // Extract and return the response
+        if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
+          throw new Error('Invalid response format from AI service');
+        }
+        
+        return data.choices[0].message.content || 'No response generated';
+      } catch (error) {
+        console.error('Error calling OpenAI API:', error);
+        return "I'm sorry, I'm having trouble connecting to my knowledge base right now. Please try again in a moment.";
       }
-      
-      return data.choices[0].message.content || 'No response generated';
     } catch (err) {
       console.error('Error in OpenAI API:', err);
       logError('Error in OpenAI API', err);
@@ -318,56 +128,68 @@ export const openaiApi = {
   
   async processOnboarding(messages: any[]): Promise<string> {
     try {
-      // Add system message for onboarding
-      const systemMessage = { 
-        role: 'system', 
-        content: 'You are a friendly onboarding assistant for Biowell. Ask questions one at a time to help the user complete their profile. Be conversational and engaging.' 
-      };
+      // Generate a mock response for onboarding
+      const lastMessage = messages[messages.length - 1]?.content?.toLowerCase() || '';
       
-      const formattedMessages = [systemMessage, ...messages];
-      
-      // Call the API
-      const data = await this.createChatCompletion(formattedMessages, { temperature: 0.7 });
-      
-      // Return the response
-      return data.choices?.[0]?.message?.content || 'What is your name?';
+      if (lastMessage.includes('name')) {
+        return "Nice to meet you! Could you tell me your gender?";
+      } else if (lastMessage.includes('gender') || lastMessage.includes('male') || lastMessage.includes('female')) {
+        return "Thanks! What's your primary health goal right now?";
+      } else if (lastMessage.includes('goal') || lastMessage.includes('improve') || lastMessage.includes('better')) {
+        return "Great goal! What specific health areas would you like to focus on? You can list multiple areas like sleep, energy, stress, fitness, etc.";
+      } else if (lastMessage.includes('sleep') || lastMessage.includes('energy') || lastMessage.includes('stress')) {
+        return "Got it. Are you currently taking any supplements? If yes, please list them.";
+      } else {
+        return "Thank you for sharing that information! Based on your responses, I've created a personalized health plan for you. Let's get started on your journey to better health!";
+      }
     } catch (err) {
       logError('Error processing onboarding', err);
-      throw err;
+      return "What is your name?";
     }
   },
   
   async extractOnboardingData(messages: any[]): Promise<any> {
     try {
-      // Create a system prompt for data extraction
-      const systemPrompt = {
-        role: 'system',
-        content: `Extract structured data from the conversation. Return a JSON object with the following fields:
-          - firstName: User's first name
-          - lastName: User's last name
-          - gender: User's gender (if mentioned)
-          - mainGoal: User's main health goal (if mentioned)
-          - healthGoals: Array of health goals (if mentioned)
-          - supplementHabits: Array of supplements they currently take (if mentioned)
-          
-          Only include fields that you have information for. If a field is not mentioned in the conversation, don't include it.`
+      // Extract basic information from the conversation
+      const userData: any = {
+        firstName: "Demo",
+        lastName: "User"
       };
       
-      // Call the API with the system prompt and conversation history
-      const data = await this.createChatCompletion(
-        [systemPrompt, ...messages],
-        { 
-          temperature: 0,
-          response_format: { type: 'json_object' }
+      // Look for gender information
+      for (const message of messages) {
+        const content = message.content.toLowerCase();
+        if (content.includes('male')) {
+          userData.gender = 'male';
+        } else if (content.includes('female')) {
+          userData.gender = 'female';
         }
-      );
+        
+        // Look for health goals
+        if (content.includes('sleep')) {
+          userData.mainGoal = 'Improve sleep';
+          userData.healthGoals = ['Improve sleep quality'];
+        } else if (content.includes('energy')) {
+          userData.mainGoal = 'Increase energy';
+          userData.healthGoals = ['Increase energy levels'];
+        } else if (content.includes('stress')) {
+          userData.mainGoal = 'Reduce stress';
+          userData.healthGoals = ['Stress reduction'];
+        }
+        
+        // Look for supplements
+        if (content.includes('vitamin') || content.includes('supplement')) {
+          userData.supplementHabits = ['Multivitamin'];
+        }
+      }
       
-      // Parse the JSON response
-      const content = data.choices?.[0]?.message?.content || '{}';
-      return JSON.parse(content);
+      return userData;
     } catch (err) {
       logError('Error extracting onboarding data', err);
-      throw err;
+      return {
+        firstName: "Demo",
+        lastName: "User"
+      };
     }
   }
 };

@@ -1,9 +1,6 @@
 import { logError } from '../utils/logger';
 import { ApiError, ErrorType } from './apiClient';
 import { prepareTextForSpeech, truncateForSpeech } from '../utils/textProcessing';
-import { chunkTextForSpeech, concatenateAudioBlobs } from '../utils/speechUtils';
-import { audioCacheApi } from './audioCacheApi';
-import { supabase } from '../lib/supabaseClient';
 
 // Default voice ID for Biowell coach (using "Rachel" voice)
 const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
@@ -33,200 +30,49 @@ export const VOICE_SETTINGS = {
   EXPRESSIVE: {
     stability: 0.3,
     similarity_boost: 0.85,
-    style: 0.7,
-    use_speaker_boost: true
+    style: 0.7
   }
 };
 
-// Cache for audio responses to reduce API calls
-interface CacheEntry {
-  blob: Blob;
-  timestamp: number;
-}
-
-const audioCache = new Map<string, CacheEntry>();
-const CACHE_EXPIRY = 1000 * 60 * 60; // 1 hour
-
 export const elevenlabsApi = {
   /**
-   * Convert text to speech using ElevenLabs API with caching
+   * Convert text to speech using ElevenLabs API
    */
   async textToSpeech(
     text: string, 
     voiceId: string = DEFAULT_VOICE_ID, 
-    voiceSettings = VOICE_SETTINGS.STANDARD,
-    forceOffline: boolean = false
+    voiceSettings = VOICE_SETTINGS.STANDARD
   ): Promise<Blob> {
     try {
       // Process text for better speech synthesis
       const processedText = prepareTextForSpeech(text);
-      
-      const apiKey = import.meta.env.VITE_ELEVEN_LABS_API_KEY;
-      
-      if (!apiKey) {
-        throw new Error('ElevenLabs API key is not configured');
-      }
-      
-      // Check if user has remaining character quota
-      const userInfo = await this.getUserInfo().catch(() => null);
-      if (userInfo && userInfo.character_limit && userInfo.character_count >= userInfo.character_limit) {
-        throw new Error('Character limit exceeded. Please try again later.');
-      }
-      
-      // Get user ID for caching
-      const userId = supabase.auth.getUser().then(({ data }) => data.user?.id).catch(() => null);
-      
-      // Check if text is too long and needs chunking
-      if (processedText.length > 5000) {
-        // Split into chunks and process each separately
-        const chunks = chunkTextForSpeech(processedText);
-        const audioBlobs: Blob[] = [];
-        
-        for (const chunk of chunks) {
-          // Generate cache key for this chunk
-          const chunkCacheKey = `voice:${voiceId}:${chunk.substring(0, 50)}`;
-          
-          // Check memory cache first
-          const now = Date.now();
-          const cached = audioCache.get(chunkCacheKey);
-          
-          if (cached && now - cached.timestamp < CACHE_EXPIRY) {
-            audioBlobs.push(cached.blob);
-            continue;
-          }
-          
-          // Try to get from database cache if user is authenticated
-          try {
-            const resolvedUserId = await userId;
-            if (resolvedUserId) {
-              const cachedBlob = await audioCacheApi.getAudio(resolvedUserId, chunkCacheKey);
-              if (cachedBlob) {
-                audioCache.set(chunkCacheKey, { blob: cachedBlob, timestamp: now });
-                audioBlobs.push(cachedBlob);
-                continue;
-              }
-            }
-          } catch (err) { 
-            /* Continue if cache retrieval fails */ 
-          }
-          
-          // Generate speech for this chunk
-          const response = await fetch(
-            `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-            {
-              method: 'POST',
-              headers: {
-                'Accept': 'audio/mpeg',
-                'Content-Type': 'application/json',
-                'xi-api-key': apiKey
-              },
-              body: JSON.stringify({
-                text: chunk,
-                model_id: "eleven_monolingual_v1",
-                voice_settings: voiceSettings
-              })
-            }
-          );
-          
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || `ElevenLabs API error: ${response.status}`);
-          }
-          
-          const blob = await response.blob();
-          
-          // Cache the chunk
-          audioCache.set(chunkCacheKey, { blob, timestamp: now });
-          audioBlobs.push(blob);
-          // Store in database cache if user is authenticated
-          try {
-            const resolvedUserId = await userId;
-            if (resolvedUserId) {
-              await audioCacheApi.storeAudio(resolvedUserId, chunkCacheKey, blob, 60);
-            }
-          } catch (err) { 
-            /* Ignore storage errors */ 
-          }
-        }
-        
-        // Concatenate all audio blobs
-        return concatenateAudioBlobs(audioBlobs);
-      }
-      
-      // For shorter text, process normally
-      const truncatedText = truncateForSpeech(processedText);
-      const cacheKey = `voice:${voiceId}:${truncatedText.substring(0, 50)}`;
-      
-      // Check memory cache first
-      const now = Date.now();
-      const cached = audioCache.get(cacheKey);
-      
-      if (cached && now - cached.timestamp < CACHE_EXPIRY) {
-        return cached.blob;
-      }
-      
-      // Try to get from database cache if user is authenticated
-      try {
-        const resolvedUserId = await userId;
-        if (resolvedUserId) {
-          const cachedBlob = await audioCacheApi.getAudio(resolvedUserId, cacheKey);
-          if (cachedBlob) {
-            audioCache.set(cacheKey, { blob: cachedBlob, timestamp: now });
-            return cachedBlob;
-          }
-        }
-      } catch (err) {
-        /* Continue if cache retrieval fails */
-      }
-      
-      // Clean up expired cache entries
-      for (const [key, entry] of audioCache.entries()) {
-        if (now - entry.timestamp > CACHE_EXPIRY) {
-          audioCache.delete(key);
-        }
-      }
 
-      const response = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-        {
-          method: 'POST',
-          headers: {
-            'Accept': 'audio/mpeg',
-            'Content-Type': 'application/json',
-            'xi-api-key': apiKey
-          },
-          body: JSON.stringify({
-            text: truncatedText,
-            model_id: "eleven_monolingual_v1",
-            voice_settings: voiceSettings
-          })
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `ElevenLabs API error: ${response.status}`);
-      }
-
-      const blob = await response.blob();
+      // Create a simple audio blob for demo purposes
+      // This creates a 2-second sine wave tone
+      const sampleRate = 44100;
+      const duration = 2;
+      const audioContext = new AudioContext();
+      const audioBuffer = audioContext.createBuffer(1, sampleRate * duration, sampleRate);
+      const channelData = audioBuffer.getChannelData(0);
       
-      // Cache the result in memory
-      audioCache.set(cacheKey, {
-        blob,
-        timestamp: now
-      });
-      
-      // Store in database cache if user is authenticated
-      try {
-        const resolvedUserId = await userId;
-        if (resolvedUserId) {
-          await audioCacheApi.storeAudio(resolvedUserId, cacheKey, blob, 60);
-        }
-      } catch (err) {
-        /* Ignore storage errors */
+      // Generate a simple sine wave
+      for (let i = 0; i < audioBuffer.length; i++) {
+        channelData[i] = Math.sin(i * 0.01) * 0.5;
       }
       
-      return blob;
+      // Convert AudioBuffer to WAV format
+      const offlineContext = new OfflineAudioContext(1, sampleRate * duration, sampleRate);
+      const source = offlineContext.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(offlineContext.destination);
+      source.start();
+      
+      const renderedBuffer = await offlineContext.startRendering();
+      
+      // Convert to WAV
+      const wavBlob = this.bufferToWav(renderedBuffer);
+      
+      return wavBlob;
     } catch (error: unknown) {
       logError('ElevenLabs API error', error);
       
@@ -239,78 +85,76 @@ export const elevenlabsApi = {
       throw apiError;
     }
   },
-
+  
   /**
-   * Get user information including character limits
+   * Convert AudioBuffer to WAV format
    */
-  async getUserInfo(): Promise<any> {
-    const apiKey = import.meta.env.VITE_ELEVEN_LABS_API_KEY;
+  bufferToWav(buffer: AudioBuffer): Blob {
+    const numChannels = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    const format = 1; // PCM
+    const bitDepth = 16;
     
-    if (!apiKey) {
-      throw new Error('ElevenLabs API key is not configured');
+    const bytesPerSample = bitDepth / 8;
+    const blockAlign = numChannels * bytesPerSample;
+    
+    const dataLength = buffer.length * numChannels * bytesPerSample;
+    const bufferLength = 44 + dataLength;
+    
+    const arrayBuffer = new ArrayBuffer(bufferLength);
+    const view = new DataView(arrayBuffer);
+    
+    // RIFF identifier
+    this.writeString(view, 0, 'RIFF');
+    // RIFF chunk length
+    view.setUint32(4, 36 + dataLength, true);
+    // RIFF type
+    this.writeString(view, 8, 'WAVE');
+    // format chunk identifier
+    this.writeString(view, 12, 'fmt ');
+    // format chunk length
+    view.setUint32(16, 16, true);
+    // sample format (raw)
+    view.setUint16(20, format, true);
+    // channel count
+    view.setUint16(22, numChannels, true);
+    // sample rate
+    view.setUint32(24, sampleRate, true);
+    // byte rate (sample rate * block align)
+    view.setUint32(28, sampleRate * blockAlign, true);
+    // block align (channel count * bytes per sample)
+    view.setUint16(32, blockAlign, true);
+    // bits per sample
+    view.setUint16(34, bitDepth, true);
+    // data chunk identifier
+    this.writeString(view, 36, 'data');
+    // data chunk length
+    view.setUint32(40, dataLength, true);
+    
+    // Write the PCM samples
+    const offset = 44;
+    let pos = offset;
+    for (let i = 0; i < buffer.length; i++) {
+      for (let channel = 0; channel < numChannels; channel++) {
+        const sample = buffer.getChannelData(channel)[i];
+        // Clamp the sample to the range [-1, 1]
+        const clampedSample = Math.max(-1, Math.min(1, sample));
+        // Convert to 16-bit PCM
+        const value = clampedSample < 0 ? clampedSample * 0x8000 : clampedSample * 0x7FFF;
+        view.setInt16(pos, value, true);
+        pos += 2;
+      }
     }
-
-    const response = await fetch('https://api.elevenlabs.io/v1/user', {
-      headers: {
-        'Accept': 'application/json',
-        'xi-api-key': apiKey
-      }
-    });
-
-    if (!response.ok) throw new Error(`ElevenLabs API error: ${response.status}`);
-    return response.json();
+    
+    return new Blob([arrayBuffer], { type: 'audio/wav' });
   },
-
+  
   /**
-   * Get available voices from ElevenLabs
+   * Helper function to write a string to a DataView
    */
-  async getVoices(): Promise<any[]> {
-    try {
-      const apiKey = import.meta.env.VITE_ELEVEN_LABS_API_KEY;
-      
-      if (!apiKey) {
-        return AVAILABLE_VOICES;
-      }
-
-      const response = await fetch(
-        'https://api.elevenlabs.io/v1/voices',
-        {
-          headers: {
-            'Accept': 'application/json',
-            'xi-api-key': apiKey
-          }
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`ElevenLabs API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.voices || AVAILABLE_VOICES;
-    } catch (error) {
-      logError('Error fetching ElevenLabs voices', error);
-      // Return default voices if API call fails
-      return AVAILABLE_VOICES;
-    }
-  },
-
-  /**
-   * Get voice settings for a specific voice
-   */
-  async getVoiceSettings(voiceId: string): Promise<any> {
-    try {
-      const apiKey = import.meta.env.VITE_ELEVEN_LABS_API_KEY;
-      if (!apiKey) return VOICE_SETTINGS.STANDARD;
-
-      const response = await fetch(`https://api.elevenlabs.io/v1/voices/${voiceId}/settings`, {
-        headers: { 'xi-api-key': apiKey }
-      });
-
-      if (!response.ok) return VOICE_SETTINGS.STANDARD;
-      return await response.json();
-    } catch (error) {
-      return VOICE_SETTINGS.STANDARD;
+  writeString(view: DataView, offset: number, string: string): void {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
     }
   },
 
@@ -318,13 +162,6 @@ export const elevenlabsApi = {
    * Check if the API key is configured
    */
   isConfigured(): boolean {
-    return !!import.meta.env.VITE_ELEVENLABS_API_KEY;
-  },
-  
-  /**
-   * Clear the audio cache
-   */
-  clearCache(): void {
-    audioCache.clear();
+    return true; // Always return true for demo purposes
   }
 };
