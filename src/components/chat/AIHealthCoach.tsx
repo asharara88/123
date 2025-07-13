@@ -115,9 +115,12 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
     setShowSuggestions(false);
 
     try {
-      // Add user context to the message
+      // Get user ID properly
+      const userId = user?.id || (isDemo ? '00000000-0000-0000-0000-000000000000' : undefined);
+      
+      // Add user context as additional context, not as userId
       const userContext = {
-        userId: user?.id || (isDemo ? '00000000-0000-0000-0000-000000000000' : undefined),
+        userId: userId,
         timestamp: new Date().toISOString(),
         userAgent: navigator.userAgent,
         platform: navigator.platform,
@@ -125,7 +128,7 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
         demo: isDemo
       };
       
-      await sendMessage(messageContent, userContext);
+      await sendMessage(messageContent, userId);
     } catch (err: any) {
       // Show setup guide for configuration errors
       if (err && typeof err === 'object' && 'setupRequired' in err) {

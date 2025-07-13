@@ -29,17 +29,9 @@ export const chatApi = {
         content: msg.content
       }));
       
-      // Add context data
-      const context = {
-        steps: 8432,
-        sleep_score: 82,
-        goal: "improve deep sleep",
-        device: "Apple Watch"
-      };
-      
       // Use OpenAI API directly instead of Supabase Edge Function
       const lastMessage = formattedMessages[formattedMessages.length - 1].content;
-      const response = await openaiApi.generateResponse(lastMessage, context);
+      const response = await openaiApi.generateResponse(lastMessage, { userId });
       
       // Save to chat history if userId is provided
       if (userId) {

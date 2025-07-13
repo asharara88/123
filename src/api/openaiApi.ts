@@ -27,7 +27,6 @@ Remember: You're a coach and guide, not a replacement for medical care.`;
 // Initialize OpenAI client
 let openai: OpenAI | null = null;
 
-// Initialize OpenAI client only if API key is available
 try {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
   if (apiKey && apiKey.trim() !== '') {
@@ -42,21 +41,77 @@ try {
 
 export const openaiApi = {
   /**
-   * Generate a response using OpenAI API
+   * Generate a response using OpenAI API with fallback to Edge Function
    */
   async generateResponse(prompt: string, context?: Record<string, any>): Promise<string> {
-    try {
-      // Check if OpenAI client is initialized
-      if (!openai) {
-        // If this is a demo user, throw a specific error instead of trying Edge Function
-        if (context?.demo === true) {
-          throw new Error('OpenAI API key is required for chat functionality. Please configure VITE_OPENAI_API_KEY in your environment variables.');
-        }
+    // First try direct OpenAI API if available
+    if (openai) {
+      try {
+        return await this.generateResponseDirect(prompt, context);
+      } catch (err) {
+        console.error('Direct OpenAI API failed, trying Edge Function:', err);
+        logError('Direct OpenAI API failed', err);
         
-        // Try to use Supabase Edge Function instead
-        return await this.generateResponseViaEdgeFunction(prompt, context);
+        // Fall back to Edge Function
+        try {
+          return await this.generateResponseViaEdgeFunction(prompt, context);
+        } catch (edgeErr) {
+          console.error('Edge Function also failed:', edgeErr);
+          logError('Edge Function also failed', edgeErr);
+          throw this.createApiError(err, edgeErr);
+        }
       }
-      
+    } else {
+      // No direct API key, try Edge Function
+      try {
+        return await this.generateResponseViaEdgeFunction(prompt, context);
+      } catch (edgeErr) {
+        console.error('Edge Function failed:', edgeErr);
+        logError('Edge Function failed', edgeErr);
+        throw this.createApiError(null, edgeErr);
+      }
+    }
+  },
+
+  /**
+   * Create a standardized API error with setup guidance
+   */
+  createApiError(directError: any, edgeError: any): ApiError {
+    let message = 'Failed to generate response';
+    let setupRequired = false;
+    
+    // Check if it's a configuration issue
+    if (edgeError && typeof edgeError === 'object') {
+      if (edgeError.message?.includes('OpenAI API key') || 
+          edgeError.message?.includes('Authentication required')) {
+        message = 'OpenAI API is not properly configured. Please check your API key settings.';
+        setupRequired = true;
+      } else if (edgeError.message?.includes('quota') || 
+                 edgeError.message?.includes('billing')) {
+        message = 'OpenAI API quota exceeded. Please check your billing and usage limits.';
+      } else if (edgeError.message?.includes('rate limit')) {
+        message = 'OpenAI API rate limit exceeded. Please try again later.';
+      }
+    }
+    
+    const apiError: ApiError = {
+      type: setupRequired ? ErrorType.AUTHENTICATION : ErrorType.SERVER,
+      message,
+      originalError: edgeError || directError,
+      setupRequired
+    };
+    
+    return apiError;
+  },
+  /**
+   * Generate response using direct OpenAI API
+   */
+  async generateResponseDirect(prompt: string, context?: Record<string, any>): Promise<string> {
+    if (!openai) {
+      throw new Error('OpenAI client is not initialized');
+    }
+
+    try {
       // Prepare messages for the API
       const messages = [
         { role: 'system', content: SYSTEM_PROMPT }
@@ -93,20 +148,13 @@ export const openaiApi = {
       
       return content;
     } catch (err) {
-      console.error('Error in OpenAI API:', err);
-      logError('Error in OpenAI API', err);
-      
-      const apiError: ApiError = {
-        type: ErrorType.SERVER,
-        message: err instanceof Error ? err.message : 'Failed to generate response',
-        originalError: err,
-      };
-      throw apiError;
+      console.error('Error in direct OpenAI API:', err);
+      throw err;
     }
   },
 
   /**
-   * Generate a response using Supabase Edge Function
+   * Generate response using Supabase Edge Function
    */
   async generateResponseViaEdgeFunction(prompt: string, context?: Record<string, any>): Promise<string> {
     try {
@@ -125,9 +173,22 @@ export const openaiApi = {
       
       // Prepare messages for the API
       const messages = [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: prompt }
+        { role: 'system', content: SYSTEM_PROMPT }
       ];
+      
+      // Add context if provided
+      if (context) {
+        messages.push({
+          role: 'system',
+          content: `Context: ${JSON.stringify(context)}`
+        });
+      }
+      
+      // Add user prompt
+      messages.push({
+        role: 'user',
+        content: prompt
+      });
       
       // Call the Edge Function
       const response = await fetch(
@@ -143,8 +204,20 @@ export const openaiApi = {
       );
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || `Edge Function error: ${response.status}`);
+        let errorMessage = `Edge Function error: ${response.status}`;
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorMessage = errorData.error?.message || errorMessage;
+          } else {
+            const errorText = await response.text();
+            errorMessage = errorText || errorMessage;
+          }
+        } catch (parseErr) {
+          // Ignore parsing errors, use default error message
+        }
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();

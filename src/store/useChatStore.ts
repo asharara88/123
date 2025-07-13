@@ -61,19 +61,20 @@ export const useChatStore = create<ChatState>()(
             timestamp: new Date()
           };
           
-          set({ messages: [...get().messages, userMessage], audioUrl: null });
-          
-          let response;
-          try {
-            // Use OpenAI API through our proxy
-            response = await openaiApi.generateResponse(message, { 
-              userId,
-              timestamp: new Date().toISOString()
-            });
-          } catch (error) {
-            logError('Error generating response', error);
-            response = "I'm sorry, I'm having trouble connecting to my knowledge base right now. Please try again later or check your API configuration.";
-          }
+set({ messages: [...get().messages, userMessage], audioUrl: null });
+
+// Create context for the API call
+const context = {
+  userId: userId,
+  timestamp: new Date().toISOString(),
+  userAgent: navigator.userAgent,
+  platform: navigator.platform,
+  language: navigator.language,
+  demo: userId === '00000000-0000-0000-0000-000000000000'
+};
+
+// Use OpenAI API through our proxy
+const response = await openaiApi.generateResponse(message, context);
           
           // Add assistant response to state
           const assistantMessage: ChatMessage = {
@@ -92,10 +93,10 @@ export const useChatStore = create<ChatState>()(
             await get().generateSpeech(response);
           }
           
-          // Save to chat history if userId is provided
-          if (userId) {
+          // Only save to chat history if user is authenticated (not demo mode)
+          if (!context.demo && context.userId !== '00000000-0000-0000-0000-000000000000') {
             try {
-              await chatApi.saveChatMessage(userId, message, response);
+              await chatApi.saveChatMessage(userMessage, response, context);
             } catch (error) {
               logError('Failed to save chat message', error);
               // Continue even if saving fails
@@ -104,9 +105,11 @@ export const useChatStore = create<ChatState>()(
           
           return response;
         } catch (err: any) {
-          const errorMessage = err.message || 'Failed to send message';
-          logError('Error sending chat message', err);
-          set({ error: errorMessage, loading: false });
+          logError('Error sending message', err);
+          set({ 
+            loading: false,
+            error: err.message || 'Failed to send message'
+          });
           return null;
         }
       },
@@ -198,12 +201,7 @@ export const useChatStore = create<ChatState>()(
       }
     }),
     {
-      name: 'biowell-chat-storage',
-      partialize: (state) => ({
-        preferSpeech: state.preferSpeech,
-        selectedVoice: state.selectedVoice,
-        voiceSettings: state.voiceSettings
-      }),
+      name: 'chat-store'
     }
   )
 );
