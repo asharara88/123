@@ -30,6 +30,5 @@ export const MessageContent = ({ content, role = 'assistant' }: MessageContentPr
       className="text-gray-900 dark:text-gray-100 prose prose-sm max-w-none dark:prose-invert"
       dangerouslySetInnerHTML={{ __html: processMarkdownText(content) }}
     />
-    </div>
   );
 };
