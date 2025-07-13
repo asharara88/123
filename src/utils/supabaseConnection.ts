@@ -167,7 +167,7 @@ export const checkSupabaseConnection = async (maxAttempts: number = 1): Promise<
         await new Promise(resolve => setTimeout(resolve, 500))
       }
     } catch (error: any) {
-      // Handle error
+      // Handle errors
     }
   }
   
