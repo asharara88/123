@@ -16,6 +16,7 @@ import {
   Calendar, 
   Shield, 
   CheckCircle,
+  Info,
 } from 'lucide-react';
 import { useUserProfileStore, UserProfile } from '../../store/useUserProfileStore';
 import { Button } from '../ui/Button';
