@@ -1,18 +1,31 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
-// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+  ],
+  optimizeDeps: {
+    include: ['lucide-react']
+  },
   server: {
-    port: 5173,
-    host: true,
+    port: 5173, // Run on port 5173 instead of 3000
   },
   build: {
-    outDir: 'dist',
+    outDir: 'dist', 
     sourcemap: true,
+    assetsInlineLimit: 0,
+    cssCodeSplit: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['framer-motion', 'lucide-react', 'chart.js', 'react-chartjs-2'],
+        }
+      }
+    }
   },
   optimizeDeps: {
-    exclude: ['lucide-react'],
+    include: ['react-router-dom', 'framer-motion', 'lucide-react']
   },
-})
+});

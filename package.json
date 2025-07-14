@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build --outDir=dist --mode production",
+    "build": "tsc && vite build",
     "lint": "eslint . --max-warnings 0",
     "preview": "vite preview",
     "clean": "rm -rf dist",
@@ -73,7 +73,7 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.5.3",
     "typescript-eslint": "^7.18.0",
-    "vite": "^6.3.5",
+    "vite": "^5.0.12",
     "vitest": "^3.2.3"
   },
   "engines": {
