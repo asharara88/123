@@ -17,7 +17,6 @@ export interface OnboardingData {
   supplementHabits?: string[];
   [key: string]: any; // Allow additional fields
 }
-import { supabase } from '../lib/supabaseClient';
 
 // System prompt for direct OpenAI API calls
 const SYSTEM_PROMPT = `You are Biowell AI, a personalized health coach focused on providing evidence-based health advice and supplement recommendations.
@@ -66,7 +65,7 @@ export const openaiApi = {
 
     try {
       // Prepare messages for the API
-      const messages = [
+      const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { role: 'system', content: SYSTEM_PROMPT }
       ];
       
@@ -117,7 +116,7 @@ export const openaiApi = {
 
     try {
       // Format messages for the API
-      const formattedMessages = [
+      const formattedMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { role: 'system', content: 'You are an onboarding assistant for a health app. Help the user complete their profile with friendly, concise questions.' },
         ...messages
       ];
@@ -154,7 +153,7 @@ export const openaiApi = {
 
     try {
       // Format messages for the API
-      const formattedMessages = [
+      const formattedMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { 
           role: 'system', 
           content: 'Extract structured data from this onboarding conversation. Return a JSON object with fields like firstName, lastName, gender, mainGoal, healthGoals, supplementHabits, etc.' 
