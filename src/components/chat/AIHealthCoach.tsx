@@ -1,11 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader, User, VolumeX, Volume2 } from 'lucide-react';
+import { Send, Loader, User, VolumeX, Volume2, Settings, History, Zap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { logError } from '../../utils/logger';
 import { useAutoScroll } from '../../hooks/useAutoScroll';
 import { useChatStore } from '../../store';
-import ChatSettingsButton from './ChatSettingsButton';
+import ChatHistory from './ChatHistory';
+import ChatSettings from './ChatSettings';
+import MessageActions from './MessageActions';
+import TypingIndicator from './TypingIndicator';
+import QuickActions from './QuickActions';
 import AudioVisualizer from './AudioVisualizer';
 import AudioPlayer from './AudioPlayer';
 import VoiceInput from './VoiceInput';
@@ -33,6 +37,8 @@ interface AIHealthCoachProps {
 export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachProps) {
   const [input, setInput] = useState(initialQuestion || '');
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -54,6 +60,7 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
     loading, 
     error, 
     sendMessage, 
+    generateSpeech,
     audioUrl,
     speechLoading,
     preferSpeech, 
@@ -253,6 +260,27 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
     }
   };
   
+  const handleRegenerate = async (messageIndex: number) => {
+    if (messageIndex < 1) return;
+    
+    const userMessage = messages[messageIndex - 1];
+    if (userMessage.role === 'user') {
+      // Remove the assistant message and regenerate
+      const newMessages = messages.slice(0, messageIndex);
+      // This would require updating the store to support message replacement
+      await handleSubmit(userMessage.content);
+    }
+  };
+
+  const handleMessageFeedback = (messageIndex: number, type: 'positive' | 'negative') => {
+    // This would typically send feedback to your analytics service
+    console.log(`Feedback for message ${messageIndex}: ${type}`);
+  };
+
+  const handleSpeakMessage = async (content: string) => {
+    await generateSpeech(content);
+  };
+
   // Handle voice input transcription
   const handleVoiceTranscription = (text: string) => {
     setInput(text);
@@ -261,7 +289,25 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
   };
 
   return (
-    <div className="flex h-full flex-col rounded-xl border border-[hsl(var(--color-border))] bg-[hsl(var(--color-card))]">
+    <div className="flex h-full">
+      {/* Sidebar for chat history */}
+      {showHistory && (
+        <div className="w-80 border-r border-[hsl(var(--color-border))] bg-[hsl(var(--color-card))]">
+          <ChatHistory 
+            onSelectSession={(sessionId) => {
+              // Load session messages
+              console.log('Loading session:', sessionId);
+              setShowHistory(false);
+            }}
+            onNewChat={() => {
+              setShowHistory(false);
+            }}
+          />
+        </div>
+      )}
+
+      {/* Main chat area */}
+      <div className="flex-1 flex flex-col rounded-xl border border-[hsl(var(--color-border))] bg-[hsl(var(--color-card))]">
       <div className="border-b border-[hsl(var(--color-border))] bg-[hsl(var(--color-card-hover))] p-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -280,6 +326,14 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
           </div>
           <div className="flex items-center gap-2">
             <button 
+              className="rounded-full p-1 text-text-light hover:bg-[hsl(var(--color-card-hover))] hover:text-text"
+              title="Chat History"
+              onClick={() => setShowHistory(!showHistory)}
+              type="button"
+            >
+              <History className="h-4 w-4" />
+            </button>
+            <button 
               className={`rounded-full p-1 ${preferSpeech ? 'text-primary' : 'text-text-light hover:bg-[hsl(var(--color-card-hover))] hover:text-text'}`}
               title={preferSpeech ? "Turn off voice" : "Turn on voice"}
               onClick={() => setPreferSpeech(!preferSpeech)}
@@ -288,15 +342,14 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
             >
               {preferSpeech ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
             </button>
-            <ChatSettingsButton 
-              className="absolute right-2 top-2"
-              showVoiceSettings={preferSpeech}
-              onVoiceToggle={() => setPreferSpeech(!preferSpeech)}
-              selectedVoice={selectedVoice}
-              onVoiceSelect={setSelectedVoice}
-              voiceSettings={voiceSettings}
-              onVoiceSettingsUpdate={updateVoiceSettings}
-            />
+            <button 
+              className="rounded-full p-1 text-text-light hover:bg-[hsl(var(--color-card-hover))] hover:text-text"
+              title="Settings"
+              onClick={() => setShowSettings(true)}
+              type="button"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>
@@ -327,6 +380,11 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
               Ask me anything about your personal wellness.
             </p>
             
+            <QuickActions 
+              onActionSelect={handleSubmit}
+              className="mb-6"
+            />
+            
             {showSuggestions && (
               <div className="flex flex-wrap justify-center gap-3">
                 {selectedSuggestions.map((question) => (
@@ -344,9 +402,9 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
         ) : (
           <div className="flex-grow">
             {messages.map((message, index) => (
-              <div
+              <div 
                 key={index}
-                className={`mb-4 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`group mb-4 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {message.role === 'assistant' && (
                   <div className="mr-2 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -384,6 +442,15 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
                   <div className="mt-1 text-xs opacity-70">
                     {message.timestamp?.toLocaleTimeString()}
                   </div>
+                  
+                  <MessageActions
+                    content={message.content}
+                    messageId={`msg-${index}`}
+                    isAssistant={message.role === 'assistant'}
+                    onRegenerate={() => handleRegenerate(index)}
+                    onFeedback={(type) => handleMessageFeedback(index, type)}
+                    onSpeak={() => handleSpeakMessage(message.content)}
+                  />
                 </div>
                 
                 {message.role === 'user' && (
@@ -397,23 +464,7 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
         )}
 
         {loading && (
-          <div className="flex justify-start">
-            <div className="mr-2 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <img 
-                src="https://leznzqfezoofngumpiqf.supabase.co/storage/v1/object/sign/icons-favicons/stack%20dash%20metalic%20favicon.svg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV82ZjcyOGVhMS1jMTdjLTQ2MTYtOWFlYS1mZmI3MmEyM2U5Y2EiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJpY29ucy1mYXZpY29ucy9zdGFjayBkYXNoIG1ldGFsaWMgZmF2aWNvbi5zdmciLCJpYXQiOjE3NTAyMjE4NjgsImV4cCI6MTc4MTc1Nzg2OH0.k7wGfiV-4klxCyuBpz_MhVhF0ahuZZqNI-LQh8rLLJA" 
-                alt="MyCoach" 
-                className="h-4 w-4"
-                loading="lazy"
-              />
-            </div>
-            <div className="max-w-[75%] rounded-lg bg-[hsl(var(--color-card-hover))] p-4">
-              <div className="flex space-x-2">
-                <div className="h-2 w-2 animate-bounce rounded-full bg-primary"></div>
-                <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '0.2s' }}></div>
-                <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '0.4s' }}></div>
-              </div>
-            </div>
-          </div>
+          <TypingIndicator isVisible={loading} userName="MyCoach" />
         )}
 
         <div ref={messagesEndRef} />
@@ -487,6 +538,13 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
           </button>
         </form>
       </div>
+      </div>
+
+      {/* Settings Modal */}
+      <ChatSettings 
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </div>
   );
 }

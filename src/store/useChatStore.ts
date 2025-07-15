@@ -4,6 +4,7 @@ import { chatApi, ChatMessage } from '../api/chatApi';
 import { logError } from '../utils/logger';
 import { openaiApi } from '../api/openaiApi'; 
 import { elevenlabsApi } from '../api/elevenlabsApi';
+import { measureAsync } from '../utils/performance';
 
 export interface ChatState {
   messages: ChatMessage[];
@@ -22,8 +23,10 @@ export interface ChatState {
   // Actions
   sendMessage: (message: string, userId?: string) => Promise<string | null>;
   generateSpeech: (text: string) => Promise<string | null>;
+  regenerateLastResponse: () => Promise<string | null>;
   clearMessages: () => void;
   fetchChatHistory: (userId: string) => Promise<void>;
+  saveChatSession: (title?: string) => Promise<void>;
   setPreferSpeech: (prefer: boolean) => void;
   setSelectedVoice: (voiceId: string) => void;
   updateVoiceSettings: (settings: { stability: number; similarityBoost: number }) => void;
@@ -73,8 +76,10 @@ const context = {
   demo: userId === '00000000-0000-0000-0000-000000000000'
 };
 
-// Use OpenAI API through our proxy
-const response = await openaiApi.generateResponse(message, context);
+// Use OpenAI API through our proxy with performance monitoring
+const response = await measureAsync('openai-request', () => 
+  openaiApi.generateResponse(message, context)
+);
           
           // Add assistant response to state
           const assistantMessage: ChatMessage = {
@@ -90,13 +95,15 @@ const response = await openaiApi.generateResponse(message, context);
           
           // Generate speech if preferred
           if (get().preferSpeech) {
-            await get().generateSpeech(response);
+            await measureAsync('speech-generation', () => 
+              get().generateSpeech(response)
+            );
           }
           
           // Only save to chat history if user is authenticated (not demo mode)
           if (!context.demo && context.userId !== '00000000-0000-0000-0000-000000000000') {
             try {
-              await chatApi.saveChatMessage(userMessage, response, context);
+              await chatApi.saveChatMessage(context.userId, message, response);
             } catch (error) {
               logError('Failed to save chat message', error);
               // Continue even if saving fails
@@ -155,6 +162,21 @@ const response = await openaiApi.generateResponse(message, context);
         }
       },
       
+      regenerateLastResponse: async () => {
+        const messages = get().messages;
+        if (messages.length < 2) return null;
+        
+        const lastUserMessage = messages[messages.length - 2];
+        if (lastUserMessage.role !== 'user') return null;
+        
+        // Remove the last assistant message
+        const newMessages = messages.slice(0, -1);
+        set({ messages: newMessages });
+        
+        // Regenerate response
+        return await get().sendMessage(lastUserMessage.content);
+      },
+      
       clearMessages: () => {
         // Revoke any existing audio URL to free memory
         if (get().audioUrl) {
@@ -182,6 +204,36 @@ const response = await openaiApi.generateResponse(message, context);
         }
       },
       
+      saveChatSession: async (title) => {
+        const messages = get().messages;
+        if (messages.length === 0) return;
+        
+        try {
+          // Generate title from first user message if not provided
+          const sessionTitle = title || messages.find(m => m.role === 'user')?.content.slice(0, 50) + '...' || 'New Chat';
+          const lastMessage = messages[messages.length - 1]?.content || '';
+          
+          // Save to localStorage (in a real app, this would go to your backend)
+          const userId = 'current-user'; // This would come from auth context
+          const sessions = JSON.parse(localStorage.getItem(`chat-sessions-${userId}`) || '[]');
+          
+          const newSession = {
+            id: Date.now().toString(),
+            title: sessionTitle,
+            lastMessage,
+            messageCount: messages.length,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            messages
+          };
+          
+          sessions.unshift(newSession);
+          localStorage.setItem(`chat-sessions-${userId}`, JSON.stringify(sessions.slice(0, 50))); // Keep last 50 sessions
+        } catch (error) {
+          logError('Failed to save chat session', error);
+        }
+      },
+      
       setPreferSpeech: (prefer: boolean) => {
         set({ preferSpeech: prefer });
         
@@ -201,7 +253,12 @@ const response = await openaiApi.generateResponse(message, context);
       }
     }),
     {
-      name: 'chat-store'
+      name: 'chat-store',
+      partialize: (state) => ({
+        preferSpeech: state.preferSpeech,
+        selectedVoice: state.selectedVoice,
+        voiceSettings: state.voiceSettings
+      })
     }
   )
 );
