@@ -81,17 +81,19 @@ export default function QuickActions({ onActionSelect, className = '' }: QuickAc
   };
 
   return (
-    <div className={`p-4 ${className}`}>
-      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Quick Actions</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+    <div className={`${className}`}>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">Quick Actions</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto">
         {quickActions.map((action) => (
           <button
             key={action.id}
             onClick={() => onActionSelect(action.prompt)}
-            className={`p-3 rounded-lg border text-sm font-medium transition-colors flex flex-col items-center gap-2 ${categoryColors[action.category]}`}
+            className={`card-interactive p-4 text-sm font-medium flex flex-col items-center gap-3 min-h-[100px] ${categoryColors[action.category]}`}
           >
-            {action.icon}
-            <span className="text-xs text-center">{action.label}</span>
+            <div className="text-current opacity-80">
+              {action.icon}
+            </div>
+            <span className="text-xs text-center font-medium leading-tight">{action.label}</span>
           </button>
         ))}
       </div>

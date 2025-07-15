@@ -53,61 +53,61 @@ export default function MessageActions({
   };
 
   return (
-    <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-all duration-200">
       <button
         onClick={handleCopy}
-        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        className="btn-ghost p-1.5 rounded-md text-xs"
         title={copied ? 'Copied!' : 'Copy message'}
       >
-        <Copy size={14} className={copied ? 'text-green-500' : 'text-gray-500'} />
+        <Copy size={12} className={copied ? 'text-green-500' : 'text-gray-500 dark:text-gray-400'} />
       </button>
 
       {isAssistant && (
         <>
           <button
             onClick={() => handleFeedback('positive')}
-            className={`p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+            className={`btn-ghost p-1.5 rounded-md text-xs ${
               feedback === 'positive' ? 'text-green-500' : 'text-gray-500'
             }`}
             title="Good response"
           >
-            <ThumbsUp size={14} />
+            <ThumbsUp size={12} />
           </button>
 
           <button
             onClick={() => handleFeedback('negative')}
-            className={`p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+            className={`btn-ghost p-1.5 rounded-md text-xs ${
               feedback === 'negative' ? 'text-red-500' : 'text-gray-500'
             }`}
             title="Poor response"
           >
-            <ThumbsDown size={14} />
+            <ThumbsDown size={12} />
           </button>
 
           <button
             onClick={onRegenerate}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500"
+            className="btn-ghost p-1.5 rounded-md text-xs text-gray-500 dark:text-gray-400"
             title="Regenerate response"
           >
-            <RefreshCw size={14} />
+            <RefreshCw size={12} />
           </button>
 
           <button
             onClick={onSpeak}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500"
+            className="btn-ghost p-1.5 rounded-md text-xs text-gray-500 dark:text-gray-400"
             title="Read aloud"
           >
-            <Volume2 size={14} />
+            <Volume2 size={12} />
           </button>
         </>
       )}
 
       <button
         onClick={handleShare}
-        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500"
+        className="btn-ghost p-1.5 rounded-md text-xs text-gray-500 dark:text-gray-400"
         title="Share message"
       >
-        <Share size={14} />
+        <Share size={12} />
       </button>
     </div>
   );

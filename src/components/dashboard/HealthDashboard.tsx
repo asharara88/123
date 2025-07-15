@@ -36,26 +36,26 @@ export default function HealthDashboard() {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto p-4">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+    <div className="max-w-6xl mx-auto p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
           Health Dashboard
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-lg text-gray-600 dark:text-gray-400">
           Monitor your health metrics and get personalized insights
         </p>
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex space-x-1 mb-6 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+      <div className="flex space-x-2 mb-8 bg-gray-100 dark:bg-gray-800 p-2 rounded-xl">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`flex items-center gap-3 px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
               activeTab === tab.id
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-md scale-105'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50'
             }`}
           >
             {tab.icon}
@@ -65,7 +65,7 @@ export default function HealthDashboard() {
       </div>
 
       {/* Tab Content */}
-      <div className="space-y-6">
+      <div className="animate-fade-in">
         {tabs.find(tab => tab.id === activeTab)?.component}
       </div>
     </div>

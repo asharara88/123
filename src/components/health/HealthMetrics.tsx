@@ -107,12 +107,12 @@ export default function HealthMetrics() {
 
   if (loading) {
     return (
-      <div className="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-        <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+      <div className="card-enhanced p-6">
+        <div className="space-y-4">
+          <div className="loading-shimmer h-6 rounded w-1/3"></div>
           <div className="grid grid-cols-2 gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div key={i} className="loading-shimmer h-20 rounded-lg"></div>
             ))}
           </div>
         </div>
@@ -121,53 +121,59 @@ export default function HealthMetrics() {
   }
 
   return (
-    <div className="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+    <div className="card-enhanced p-6">
+      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
         Health Metrics Overview
       </h3>
 
       {summaries.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          <Activity className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p>No health metrics available yet.</p>
-          <p className="text-sm mt-1">Connect your wearable device to start tracking.</p>
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            <Activity className="w-8 h-8 opacity-50" />
+          </div>
+          <h4 className="text-lg font-medium mb-2">No health metrics available yet</h4>
+          <p className="text-sm">Connect your wearable device to start tracking your health data.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {summaries.map((summary) => (
             <div
               key={summary.type}
-              className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
+              className="card-interactive p-5 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900"
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-3">
                 <div className={`${summary.color}`}>
                   {summary.icon}
                 </div>
-                <div className="flex items-center text-sm">
+                <div className="flex items-center">
                   {summary.trend === 'up' && <TrendingUp className="w-4 h-4 text-green-500" />}
                   {summary.trend === 'down' && <TrendingDown className="w-4 h-4 text-red-500" />}
-                  {summary.trend === 'stable' && <div className="w-4 h-4 bg-gray-400 rounded-full"></div>}
+                  {summary.trend === 'stable' && <div className="w-2 h-2 bg-gray-400 rounded-full"></div>}
                 </div>
               </div>
               
-              <div className="mb-1">
-                <span className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="mb-2">
+                <span className="text-3xl font-bold text-gray-900 dark:text-white">
                   {summary.current}
                 </span>
-                <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
+                <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
                   {summary.unit}
                 </span>
               </div>
               
-              <div className="text-sm text-gray-600 dark:text-gray-300">
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
                 {formatMetricName(summary.type)}
               </div>
               
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {summary.trend === 'up' && `+${(summary.current - summary.previous).toFixed(1)}`}
-                {summary.trend === 'down' && `${(summary.current - summary.previous).toFixed(1)}`}
-                {summary.trend === 'stable' && 'No change'}
-                {' from last reading'}
+              <div className={`text-xs font-medium ${
+                summary.trend === 'up' ? 'text-green-600 dark:text-green-400' :
+                summary.trend === 'down' ? 'text-red-600 dark:text-red-400' :
+                'text-gray-500 dark:text-gray-400'
+              }`}>
+                {summary.trend === 'up' && `↗ +${(summary.current - summary.previous).toFixed(1)}`}
+                {summary.trend === 'down' && `↘ ${(summary.current - summary.previous).toFixed(1)}`}
+                {summary.trend === 'stable' && '→ No change'}
+                <span className="text-gray-400 ml-1">vs last</span>
               </div>
             </div>
           ))}

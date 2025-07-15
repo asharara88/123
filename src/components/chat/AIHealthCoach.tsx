@@ -318,22 +318,25 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
       <div className="border-b border-[hsl(var(--color-border))] bg-[hsl(var(--color-card-hover))] p-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-primary/20 to-primary-dark/20 text-primary border-2 border-primary/20">
               <img 
                 src="/favicon.svg" 
                 alt="MyCoach" 
-                className="h-5 w-5"
+                className="h-6 w-6"
                 loading="eager"
               />
             </div>
             <div>
-              <h3 className="text-sm font-medium">MyCoach</h3>
-              <p className="text-xs text-text-light">Personalized health guidance</p>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">MyCoach</h3>
+              <div className="flex items-center gap-2">
+                <div className="status-dot status-online"></div>
+                <p className="text-xs text-text-light">Online • Ready to help</p>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button 
-              className="rounded-full p-1 text-text-light hover:bg-[hsl(var(--color-card-hover))] hover:text-text"
+              className="btn-ghost p-2 rounded-lg"
               title="Chat History"
               onClick={() => setShowHistory(!showHistory)}
               type="button"
@@ -341,7 +344,7 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
               <History className="h-4 w-4" />
             </button>
             <button 
-              className="rounded-full p-1 text-text-light hover:bg-[hsl(var(--color-card-hover))] hover:text-text"
+              className="btn-ghost p-2 rounded-lg"
               title="Health Dashboard"
               onClick={() => setShowDashboard(!showDashboard)}
               type="button"
@@ -349,7 +352,7 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
               <Activity className="h-4 w-4" />
             </button>
             <button 
-              className="rounded-full p-1 text-text-light hover:bg-[hsl(var(--color-card-hover))] hover:text-text"
+              className="btn-ghost p-2 rounded-lg"
               title="Export Chat"
               onClick={() => setShowExport(true)}
               type="button"
@@ -357,16 +360,16 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
               <Download className="h-4 w-4" />
             </button>
             <button 
-              className="rounded-full p-1 text-text-light hover:bg-[hsl(var(--color-card-hover))] hover:text-text relative"
+              className="btn-ghost p-2 rounded-lg relative"
               title="Notifications"
               onClick={() => setShowNotifications(true)}
               type="button"
             >
               <Bell className="h-4 w-4" />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-gray-800 animate-pulse"></span>
             </button>
             <button 
-              className={`rounded-full p-1 ${preferSpeech ? 'text-primary' : 'text-text-light hover:bg-[hsl(var(--color-card-hover))] hover:text-text'}`}
+              className={`btn-ghost p-2 rounded-lg ${preferSpeech ? 'text-primary bg-primary/10' : ''}`}
               title={preferSpeech ? "Turn off voice" : "Turn on voice"}
               onClick={() => setPreferSpeech(!preferSpeech)}
               aria-pressed={(preferSpeech.toString()).toString()}
@@ -375,7 +378,7 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
               {preferSpeech ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
             </button>
             <button 
-              className="rounded-full p-1 text-text-light hover:bg-[hsl(var(--color-card-hover))] hover:text-text"
+              className="btn-ghost p-2 rounded-lg"
               title="Settings"
               onClick={() => setShowSettings(true)}
               type="button"
@@ -388,10 +391,14 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
       
       <div 
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-4 overscroll-contain"
+        className="flex-1 overflow-y-auto p-6 overscroll-contain smooth-scroll"
         style={{ display: 'flex', flexDirection: 'column' }}>
         
-        {error && <ApiErrorDisplay error={{ type: 'unknown', message: error }} />}
+        {error && (
+          <div className="mb-4">
+            <ApiErrorDisplay error={{ type: 'unknown', message: error }} />
+          </div>
+        )}
 
         {showSetupGuide && (
           <SetupGuide onClose={() => setShowSetupGuide(false)} />
@@ -399,31 +406,31 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
 
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
-            <div className="mb-4 rounded-full bg-primary/10 p-4">
+            <div className="mb-6 rounded-full bg-gradient-to-r from-primary/20 to-primary-dark/20 p-6 border-4 border-primary/10">
               <img 
                 src="/favicon.svg" 
                 alt="MyCoach" 
-                className="h-8 w-8 text-primary"
+                className="h-12 w-12 text-primary"
                 loading="lazy"
               />
             </div>
-            <h3 className="mb-2 text-lg font-semibold">Welcome to your MyCoach</h3>
-            <p className="mb-6 text-text-light">
-              Ask me anything about your personal wellness.
+            <h3 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white">Welcome to MyCoach</h3>
+            <p className="mb-8 text-lg text-text-light max-w-md">
+              Your personalized AI health coach is ready to help you optimize your wellness journey.
             </p>
             
             <QuickActions 
               onActionSelect={handleSubmit}
-              className="mb-6"
+              className="mb-8"
             />
             
             {showSuggestions && (
-              <div className="flex flex-wrap justify-center gap-3">
+              <div className="flex flex-wrap justify-center gap-3 max-w-2xl">
                 {selectedSuggestions.map((question) => (
                   <button
                     key={question}
                     onClick={() => handleSubmit(question)}
-                    className="rounded-full bg-primary/10 px-3 py-2 text-sm text-primary transition-colors hover:bg-primary/20"
+                    className="btn-ghost px-4 py-2 text-sm bg-gray-100 dark:bg-gray-800 hover:bg-primary/10 hover:text-primary border border-gray-200 dark:border-gray-700 hover:border-primary/30"
                   >
                     {question}
                   </button>
@@ -432,47 +439,54 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
             )}
           </div>
         ) : (
-          <div className="flex-grow">
+          <div className="flex-grow space-y-6">
             {messages.map((message, index) => (
               <div 
                 key={index}
-                className={`group mb-4 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`group flex items-start gap-3 ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
               >
-                {message.role === 'assistant' && (
-                  <div className="mr-2 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
+                  message.role === 'assistant' 
+                    ? 'bg-gradient-to-r from-primary/20 to-primary-dark/20 text-primary border-2 border-primary/20' 
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                }`}>
+                  {message.role === 'assistant' ? (
                     <img 
                       src="https://leznzqfezoofngumpiqf.supabase.co/storage/v1/object/sign/icons-favicons/stack%20dash%20metalic%20favicon.svg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV82ZjcyOGVhMS1jMTdjLTQ2MTYtOWFlYS1mZmI3MmEyM2U5Y2EiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJpY29ucy1mYXZpY29ucy9zdGFjayBkYXNoIG1ldGFsaWMgZmF2aWNvbi5zdmciLCJpYXQiOjE3NTAyMjE4NjgsImV4cCI6MTc4MTc1Nzg2OH0.k7wGfiV-4klxCyuBpz_MhVhF0ahuZZqNI-LQh8rLLJA" 
                       alt="MyCoach" 
                       className="h-4 w-4"
                       loading="lazy"
                     />
-                  </div>
-                )}
+                  ) : (
+                    <User className="h-4 w-4" />
+                  )}
+                </div>
                 
                 <div
-                  className={`max-w-[75%] rounded-lg px-4 py-3 ${
+                  className={`message-bubble ${
                     message.role === 'user'
-                      ? 'bg-primary text-white'
-                      : currentTheme === 'dark'
-                      ? 'bg-[hsl(var(--color-card-hover))] text-text'
-                      : 'bg-[hsl(var(--color-surface-1))] text-text'
+                      ? 'message-bubble-user'
+                      : 'message-bubble-assistant'
                   }`}
                 >
                   {message.role === 'assistant' ? (
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <div className="prose prose-sm max-w-none dark:prose-invert prose-p:mb-2 prose-p:last:mb-0">
                       <MessageContent content={message.content} />
                     </div>
                   ) : (
-                    <div>{message.content}</div>
+                    <div className="text-sm leading-relaxed">{message.content}</div>
                   )}
-                  {message.role === 'assistant' && preferSpeech && (
-                    <div className="mt-2 flex items-center gap-2 text-xs text-text-light">
-                      <Volume2 className="h-3 w-3" />
-                      <span>Voice response available</span>
-                    </div>
-                  )}
-                  <div className="mt-1 text-xs opacity-70">
+                  
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="text-xs opacity-60">
                     {message.timestamp?.toLocaleTimeString()}
+                    </div>
+                    {message.role === 'assistant' && preferSpeech && (
+                      <div className="flex items-center gap-1 text-xs opacity-60">
+                        <Volume2 className="h-3 w-3" />
+                        <span>Voice available</span>
+                      </div>
+                    )}
                   </div>
                   
                   <MessageActions
@@ -484,19 +498,23 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
                     onSpeak={() => handleSpeakMessage(message.content)}
                   />
                 </div>
-                
-                {message.role === 'user' && (
-                  <div className="ml-2 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[hsl(var(--color-card-hover))] text-text-light">
-                    <User className="h-4 w-4" />
-                  </div>
-                )}
               </div>
             ))}
           </div>
         )}
 
         {loading && (
-          <TypingIndicator isVisible={loading} userName="MyCoach" />
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-primary/20 to-primary-dark/20 text-primary border-2 border-primary/20">
+              <img 
+                src="https://leznzqfezoofngumpiqf.supabase.co/storage/v1/object/sign/icons-favicons/stack%20dash%20metalic%20favicon.svg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV82ZjcyOGVhMS1jMTdjLTQ2MTYtOWFlYS1mZmI3MmEyM2U5Y2EiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJpY29ucy1mYXZpY29ucy9zdGFjayBkYXNoIG1ldGFsaWMgZmF2aWNvbi5zdmciLCJpYXQiOjE3NTAyMjE4NjgsImV4cCI6MTc4MTc1Nzg2OH0.k7wGfiV-4klxCyuBpz_MhVhF0ahuZZqNI-LQh8rLLJA" 
+                alt="MyCoach" 
+                className="h-4 w-4"
+                loading="lazy"
+              />
+            </div>
+            <TypingIndicator isVisible={loading} userName="MyCoach" />
+          </div>
         )}
 
         <div ref={messagesEndRef} />
@@ -504,13 +522,13 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
 
       {/* Speech loading indicator */}
       {speechLoading && preferSpeech && (
-        <div className="flex items-center justify-center border-t border-[hsl(var(--color-border))] bg-[hsl(var(--color-card-hover))] px-4 py-2">
-          <div className="flex items-center gap-2 text-xs text-text-light w-full">
+        <div className="border-t border-[hsl(var(--color-border))] bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-6 py-3">
+          <div className="flex items-center gap-3 text-sm text-blue-700 dark:text-blue-300">
             <Loader className="h-3 w-3 animate-spin" />
             <span>Generating voice response...</span>
-            <div className="flex-1">
-              <div className="h-1 w-full rounded-full bg-[hsl(var(--color-surface-2))]">
-                <div className="h-full w-1/3 animate-pulse rounded-full bg-primary"></div>
+            <div className="flex-1 ml-4">
+              <div className="h-2 w-full rounded-full bg-blue-200 dark:bg-blue-800">
+                <div className="h-full w-1/3 animate-pulse rounded-full bg-gradient-to-r from-blue-500 to-indigo-500"></div>
               </div>
             </div>
           </div>
@@ -519,14 +537,14 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
 
       {/* Voice recording error message */}
       {recordingError && (
-        <div className="border-t border-[hsl(var(--color-border))] bg-error/10 px-4 py-2 text-xs text-error">
+        <div className="notification notification-error">
           {recordingError}
         </div>
       )}
 
       {/* Audio controls when playing */}
       {audioUrl && preferSpeech && (
-        <div className="border-t border-[hsl(var(--color-border))] bg-[hsl(var(--color-card-hover))] p-2 space-y-2">
+        <div className="border-t border-[hsl(var(--color-border))] bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 space-y-3">
           <AudioPlayer 
             src={audioUrl} 
             onEnded={() => setIsPlaying(false)} 
@@ -538,8 +556,8 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
         </div>
       )}
 
-      <div className="border-t border-[hsl(var(--color-border))] p-4">
-        <form onSubmit={handleSubmit} className="flex gap-2 relative">
+      <div className="border-t border-[hsl(var(--color-border))] p-6 bg-gray-50 dark:bg-gray-900/50">
+        <form onSubmit={handleSubmit} className="flex gap-3 relative">
           <input
             key="chat-input"
             ref={inputRef}
@@ -547,13 +565,13 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask me anything about your health..."
-            className="flex-1 rounded-lg border border-[hsl(var(--color-border))] bg-[hsl(var(--color-surface-1))] px-4 py-2 text-text placeholder:text-text-light focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="input-field flex-1 text-base"
             disabled={loading}
             aria-label="Your message"
           />
           
           {/* Voice input component */}
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             <VoiceInput 
               onVoiceInput={handleVoiceTranscription}
               disabled={loading}
@@ -563,10 +581,14 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
+            className="btn btn-primary px-6 py-3 flex-shrink-0"
             aria-label="Send message"
           >
-            <Send className="h-5 w-5" />
+            {loading ? (
+              <Loader className="h-5 w-5 animate-spin" />
+            ) : (
+              <Send className="h-5 w-5" />
+            )}
           </button>
         </form>
       </div>
