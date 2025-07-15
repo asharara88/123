@@ -74,11 +74,7 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
     audioUrl,
     speechLoading,
     preferSpeech, 
-    setPreferSpeech,
-    selectedVoice,
-    setSelectedVoice,
-    voiceSettings,
-    updateVoiceSettings
+    setPreferSpeech
   } = useChatStore();
 
   // Only use auto-scroll after the first render
