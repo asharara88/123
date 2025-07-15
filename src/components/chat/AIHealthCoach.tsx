@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Loader, User, VolumeX, Volume2, Settings, History, Zap } from 'lucide-react';
+import { Bell, Download, Activity } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { logError } from '../../utils/logger';
@@ -14,8 +15,11 @@ import AudioVisualizer from './AudioVisualizer';
 import AudioPlayer from './AudioPlayer';
 import VoiceInput from './VoiceInput';
 import { MessageContent } from './MessageContent';
+import ChatExport from './ChatExport';
 import { SetupGuide } from '../common/SetupGuide';
 import ApiErrorDisplay from '../common/ApiErrorDisplay';
+import HealthDashboard from '../dashboard/HealthDashboard';
+import NotificationCenter from '../notifications/NotificationCenter';
 
 const suggestedQuestions = [
   "What's my current health status?",
@@ -39,6 +43,9 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -334,6 +341,31 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
               <History className="h-4 w-4" />
             </button>
             <button 
+              className="rounded-full p-1 text-text-light hover:bg-[hsl(var(--color-card-hover))] hover:text-text"
+              title="Health Dashboard"
+              onClick={() => setShowDashboard(!showDashboard)}
+              type="button"
+            >
+              <Activity className="h-4 w-4" />
+            </button>
+            <button 
+              className="rounded-full p-1 text-text-light hover:bg-[hsl(var(--color-card-hover))] hover:text-text"
+              title="Export Chat"
+              onClick={() => setShowExport(true)}
+              type="button"
+            >
+              <Download className="h-4 w-4" />
+            </button>
+            <button 
+              className="rounded-full p-1 text-text-light hover:bg-[hsl(var(--color-card-hover))] hover:text-text relative"
+              title="Notifications"
+              onClick={() => setShowNotifications(true)}
+              type="button"
+            >
+              <Bell className="h-4 w-4" />
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            </button>
+            <button 
               className={`rounded-full p-1 ${preferSpeech ? 'text-primary' : 'text-text-light hover:bg-[hsl(var(--color-card-hover))] hover:text-text'}`}
               title={preferSpeech ? "Turn off voice" : "Turn on voice"}
               onClick={() => setPreferSpeech(!preferSpeech)}
@@ -544,6 +576,38 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
       <ChatSettings 
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
+      />
+
+      {/* Export Modal */}
+      <ChatExport 
+        isOpen={showExport}
+        onClose={() => setShowExport(false)}
+      />
+
+      {/* Health Dashboard Modal */}
+      {showDashboard && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Health Dashboard
+              </h2>
+              <button
+                onClick={() => setShowDashboard(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            <HealthDashboard />
+          </div>
+        </div>
+      )}
+
+      {/* Notification Center */}
+      <NotificationCenter 
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
       />
     </div>
   );
