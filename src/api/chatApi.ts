@@ -56,13 +56,13 @@ export const chatApi = {
   async getChatHistory(userId: string, limit: number = 10): Promise<ChatHistoryEntry[]> {
     return apiClient.request(
       async () => {
-        const result = await supabase
+        const { data, error } = await supabase
           .from('chat_history')
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
           .limit(limit);
-        return result;
+        return { data: data || [], error };
       },
       'Failed to fetch chat history'
     );

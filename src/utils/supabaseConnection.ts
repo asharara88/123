@@ -150,10 +150,10 @@ export const checkSupabaseConnection = async (maxAttempts: number = 1): Promise<
         timestamp: new Date().toISOString(),
         supabaseUrl: supabaseUrl ? 'configured' : 'missing',
         supabaseKey: supabaseAnonKey ? 'configured' : 'missing',
-        error: {
-          message: error?.message || 'Unknown error',
-          name: error?.name || 'Error',
-          details: error?.toString() || 'No details available'
+        err: {
+          message: err?.message || 'Unknown error',
+          name: err?.name || 'Error',
+          details: err?.toString() || 'No details available'
         }
       }
       
@@ -162,11 +162,11 @@ export const checkSupabaseConnection = async (maxAttempts: number = 1): Promise<
       const isLastAttempt = attempt === maxAttempts
       
       if (isLastAttempt) {
-        dispatchConnectionError(error, { attempt, maxAttempts })
+        dispatchConnectionError(err, { attempt, maxAttempts })
       } else {
         await new Promise(resolve => setTimeout(resolve, 500))
       }
-    } catch (error: any) {
+    } catch (err: any) {
       // Handle errors
     }
   }
@@ -214,7 +214,7 @@ export const getConnectionStatus = async (): Promise<{
   } catch (error: any) {
     return { 
       connected: false, 
-      error: error.message,
+      error: error?.message,
       timestamp 
     }
   }
@@ -234,7 +234,7 @@ export const initializeConnection = async (): Promise<boolean> => {
     }
     
     return isConnected
-  } catch (error: any) {
+  } catch (err: any) {
     logInfo('Connection initialization completed with limited connectivity', { 
       note: 'App will continue to function with reduced features'
     })
