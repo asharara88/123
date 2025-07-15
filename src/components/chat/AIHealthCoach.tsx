@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Loader, User, VolumeX, Volume2, Settings, History, Zap } from 'lucide-react';
 import { Bell, Download, Activity } from 'lucide-react';
+import { Suspense } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { logError } from '../../utils/logger';
 import { useAutoScroll } from '../../hooks/useAutoScroll';
 import { useChatStore } from '../../store';
-import ChatHistory from './ChatHistory';
-import ChatSettings from './ChatSettings';
 import MessageActions from './MessageActions';
 import TypingIndicator from './TypingIndicator';
 import QuickActions from './QuickActions';
@@ -15,11 +14,16 @@ import AudioVisualizer from './AudioVisualizer';
 import AudioPlayer from './AudioPlayer';
 import VoiceInput from './VoiceInput';
 import { MessageContent } from './MessageContent';
-import ChatExport from './ChatExport';
 import { SetupGuide } from '../common/SetupGuide';
 import ApiErrorDisplay from '../common/ApiErrorDisplay';
-import HealthDashboard from '../dashboard/HealthDashboard';
-import NotificationCenter from '../notifications/NotificationCenter';
+import LazyWrapper from '../common/LazyWrapper';
+import { 
+  HealthDashboard, 
+  NotificationCenter, 
+  ChatExport, 
+  ChatSettings, 
+  ChatHistory 
+} from '../../utils/lazyImports';
 
 const suggestedQuestions = [
   "What's my current health status?",
@@ -300,16 +304,18 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
       {/* Sidebar for chat history */}
       {showHistory && (
         <div className="w-80 border-r border-[hsl(var(--color-border))] bg-[hsl(var(--color-card))]">
-          <ChatHistory 
-            onSelectSession={(sessionId) => {
-              // Load session messages
-              console.log('Loading session:', sessionId);
-              setShowHistory(false);
-            }}
-            onNewChat={() => {
-              setShowHistory(false);
-            }}
-          />
+          <LazyWrapper>
+            <ChatHistory 
+              onSelectSession={(sessionId) => {
+                // Load session messages
+                console.log('Loading session:', sessionId);
+                setShowHistory(false);
+              }}
+              onNewChat={() => {
+                setShowHistory(false);
+              }}
+            />
+          </LazyWrapper>
         </div>
       )}
 
@@ -595,16 +601,24 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
       </div>
 
       {/* Settings Modal */}
-      <ChatSettings 
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-      />
+      {showSettings && (
+        <LazyWrapper>
+          <ChatSettings 
+            isOpen={showSettings}
+            onClose={() => setShowSettings(false)}
+          />
+        </LazyWrapper>
+      )}
 
       {/* Export Modal */}
-      <ChatExport 
-        isOpen={showExport}
-        onClose={() => setShowExport(false)}
-      />
+      {showExport && (
+        <LazyWrapper>
+          <ChatExport 
+            isOpen={showExport}
+            onClose={() => setShowExport(false)}
+          />
+        </LazyWrapper>
+      )}
 
       {/* Health Dashboard Modal */}
       {showDashboard && (
@@ -621,16 +635,22 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
                 ✕
               </button>
             </div>
-            <HealthDashboard />
+            <LazyWrapper>
+              <HealthDashboard />
+            </LazyWrapper>
           </div>
         </div>
       )}
 
       {/* Notification Center */}
-      <NotificationCenter 
-        isOpen={showNotifications}
-        onClose={() => setShowNotifications(false)}
-      />
+      {showNotifications && (
+        <LazyWrapper>
+          <NotificationCenter 
+            isOpen={showNotifications}
+            onClose={() => setShowNotifications(false)}
+          />
+        </LazyWrapper>
+      )}
     </div>
   );
 }

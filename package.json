@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build --outDir=dist --mode production",
+    "build": "tsc && vite build --outDir=dist --mode production --minify",
+    "build:analyze": "npm run build && npx vite-bundle-analyzer dist",
     "lint": "eslint . --max-warnings 0",
     "preview": "vite preview",
     "clean": "rm -rf dist",
+    "size-check": "npm run build && ls -lah dist/assets/",
     "replace-console-error": "node --loader ts-node/esm scripts/replaceConsoleErrorAndImport.ts",
     "fetch:feeds": "node --loader ts-node/esm scripts/fetchFeeds.ts",
     "test": "vitest run",
@@ -16,6 +18,7 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "postinstall": "echo 'Skipping problematic native builds'",
+    "optimize": "npm run clean && npm run build && npm run size-check",
     "import:supplements": "node --loader ts-node/esm src/scripts/importSupplements.ts",
     "import:csv": "node --loader ts-node/esm src/scripts/importSupplementsFromCsv.ts"
   },
