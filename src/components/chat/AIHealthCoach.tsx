@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader, User, VolumeX, Volume2, Settings, History, Zap } from 'lucide-react';
+import { Send, Loader, User, VolumeX, Volume2, Settings, History } from 'lucide-react';
 import { Bell, Download, Activity } from 'lucide-react';
-import { Suspense } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { logError } from '../../utils/logger';
@@ -65,7 +64,7 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { user, isDemo } = useAuth();
-  const { currentTheme } = useTheme();
+  useTheme();
   const { 
     messages, 
     loading, 
