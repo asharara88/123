@@ -250,21 +250,11 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
     }
   };
 
-  const toggleRecording = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  };
-  
   const handleRegenerate = async (messageIndex: number) => {
     if (messageIndex < 1) return;
     
     const userMessage = messages[messageIndex - 1];
     if (userMessage.role === 'user') {
-      // Remove the assistant message and regenerate
-      const newMessages = messages.slice(0, messageIndex);
       // This would require updating the store to support message replacement
       await handleSubmit(userMessage.content);
     }
@@ -365,7 +355,7 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
               className={`btn-ghost p-2 rounded-lg ${preferSpeech ? 'text-primary bg-primary/10' : ''}`}
               title={preferSpeech ? "Turn off voice" : "Turn on voice"}
               onClick={() => setPreferSpeech(!preferSpeech)}
-              aria-pressed={(preferSpeech.toString()).toString()}
+              aria-pressed={preferSpeech}
               type="button"
             >
               {preferSpeech ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
