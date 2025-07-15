@@ -115,7 +115,9 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
   }, []);
 
   const handleSubmit = async (e: React.FormEvent | string) => {
-    e?.preventDefault?.();
+    if (typeof e === 'object' && e?.preventDefault) {
+      e.preventDefault();
+    }
     const messageContent = typeof e === 'string' ? e : input;
     
     if (!messageContent.trim()) return;
@@ -126,16 +128,6 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
     try {
       // Get user ID properly
       const userId = user?.id || (isDemo ? '00000000-0000-0000-0000-000000000000' : undefined);
-      
-      // Add user context as additional context, not as userId
-      const userContext = {
-        userId: userId,
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        platform: navigator.platform,
-        language: navigator.language,
-        demo: isDemo
-      };
       
       await sendMessage(messageContent, userId);
     } catch (err: any) {
@@ -214,7 +206,7 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        // const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         
         // Here you would typically send the audio to a speech-to-text service
         // For now, we'll just simulate a response after a delay
