@@ -1,5 +1,6 @@
 interface AudioVisualizerProps {
-  // Add props as needed
+  audioUrl: string;
+  isPlaying: boolean;
 }
 
 export default function AudioVisualizer(props: AudioVisualizerProps) {

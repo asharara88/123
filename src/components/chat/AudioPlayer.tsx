@@ -1,5 +1,6 @@
 interface AudioPlayerProps {
-  // Add props as needed
+  src: string;
+  onEnded: () => void;
 }
 
 export default function AudioPlayer(props: AudioPlayerProps) {

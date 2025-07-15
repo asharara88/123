@@ -55,11 +55,6 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingError, setRecordingError] = useState<string | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const recordingTimeoutRef = useRef<number | null>(null);
   const [isFirstRender, setIsFirstRender] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -176,79 +171,8 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
         audioRef.current.pause();
         audioRef.current = null;
       }
-      if (mediaRecorderRef.current) {
-        // Check if MediaRecorder is in a state where it can be stopped
-        if (mediaRecorderRef.current.state === 'recording') {
-          mediaRecorderRef.current.stop();
-        }
-        mediaRecorderRef.current = null;
-      }
-      if (recordingTimeoutRef.current) {
-        clearTimeout(recordingTimeoutRef.current);
-        recordingTimeoutRef.current = null;
-      }
     };
   }, []);
-
-  // Voice recording functionality
-  const startRecording = async () => {
-    try {
-      setRecordingError(null);
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        // const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        
-        // Here you would typically send the audio to a speech-to-text service
-        // For now, we'll just simulate a response after a delay
-        setTimeout(() => {
-          const simulatedText = "How can I improve my sleep quality?";
-          setInput(simulatedText);
-          
-          // Optional: Auto-submit after voice recognition
-          // handleSubmit(simulatedText);
-        }, 1000);
-        
-        // Clean up
-        stream.getTracks().forEach(track => track.stop());
-        setIsRecording(false);
-        
-        if (recordingTimeoutRef.current) {
-          clearTimeout(recordingTimeoutRef.current);
-          recordingTimeoutRef.current = null;
-        }
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-      
-      // Auto-stop after 30 seconds
-      recordingTimeoutRef.current = window.setTimeout(() => {
-        if (mediaRecorderRef.current && isRecording) {
-          stopRecording();
-        }
-      }, 30000);
-    } catch (err) {
-      console.error('Error starting recording:', err);
-      setRecordingError('Microphone access denied. Please check your browser permissions.');
-      setIsRecording(false);
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-    }
-  };
 
   const handleRegenerate = async (messageIndex: number) => {
     if (messageIndex < 1) return;
@@ -515,13 +439,6 @@ export default function AIHealthCoach({ initialQuestion = null }: AIHealthCoachP
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Voice recording error message */}
-      {recordingError && (
-        <div className="notification notification-error">
-          {recordingError}
         </div>
       )}
 
